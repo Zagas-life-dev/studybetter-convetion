@@ -71,40 +71,67 @@ export function EnhancedPdfGenerator({ markdown, fileName, taskType }: EnhancedP
       const tempDiv = document.createElement("div")
       tempDiv.className = "pdf-content"
       tempDiv.style.width = "800px"
-      tempDiv.style.padding = "40px"
-      tempDiv.style.backgroundColor = "white"
-      tempDiv.style.color = "black"
-      tempDiv.style.fontFamily = "Lexend, Arial, sans-serif"
+      tempDiv.style.padding = "0"
+      tempDiv.style.backgroundColor = "#fafafa"
+      tempDiv.style.color = "#1a1a1a"
+      tempDiv.style.fontFamily = "Lexend, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif"
 
-      // Create header with Study Better logo/title
+      // Create engaging header with gradient and modern design
       const header = document.createElement("div")
-      header.style.marginBottom = "20px"
+      header.style.background = "linear-gradient(135deg, #8b5cf6 0%, #9333ea 50%, #a855f7 100%)"
+      header.style.padding = "40px 50px"
+      header.style.marginBottom = "30px"
+      header.style.borderRadius = "0"
+      header.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)"
       header.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h1 style="font-size: 24px; font-weight: bold; color: rgb(0,0,0); margin: 0;">Study Better</h1>
-          <div style="font-size: 14px; color: rgb(0,0,0);">${new Date().toLocaleDateString()}</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+          <div>
+            <h1 style="font-size: 32px; font-weight: 700; color: #ffffff; margin: 0 0 8px 0; letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">Study Better</h1>
+            <p style="font-size: 14px; color: rgba(255,255,255,0.95); margin: 0; font-weight: 400;">AI-Powered Learning Platform</p>
+          </div>
+          <div style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 8px; backdrop-filter: blur(10px);">
+            <div style="font-size: 12px; color: rgba(255,255,255,0.9); font-weight: 500; margin-bottom: 4px;">Generated</div>
+            <div style="font-size: 14px; color: #ffffff; font-weight: 600;">${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+          </div>
         </div>
-        <div style="height: 2px; background-color: #5c6ac4; margin-bottom: 20px;"></div>
       `
       tempDiv.appendChild(header)
 
-      // Create title based on task type
-      const title = document.createElement("h2")
-      title.style.fontSize = "20px"
-      title.style.fontWeight = "bold"
-      title.style.marginBottom = "16px"
-      title.style.color = "rgb(0,0,0)"
-      title.textContent = `${taskType === "summarize" ? "Summary" : "Explanation"} of: ${fileName.replace(".pdf", "")}`
-      tempDiv.appendChild(title)
+      // Create engaging title section with icon and badge
+      const titleSection = document.createElement("div")
+      titleSection.style.padding = "0 50px 30px 50px"
+      titleSection.style.marginBottom = "30px"
+      const taskTypeLabel = taskType === "summarize" ? "Summary" : "Explanation"
+      const taskTypeColor = taskType === "summarize" ? "#8b5cf6" : "#9333ea"
+      titleSection.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <div style="background: ${taskTypeColor}; width: 4px; height: 40px; border-radius: 2px;"></div>
+          <div style="flex: 1;">
+            <div style="display: inline-block; background: ${taskTypeColor}15; color: ${taskTypeColor}; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+              ${taskTypeLabel}
+            </div>
+            <h2 style="font-size: 28px; font-weight: 700; color: #1a1a1a; margin: 0; line-height: 1.3; letter-spacing: -0.3px;">
+              ${fileName.replace(".pdf", "").replace(/_/g, " ")}
+            </h2>
+          </div>
+        </div>
+        <div style="height: 1px; background: linear-gradient(to right, ${taskTypeColor}, transparent); margin-top: 20px;"></div>
+      `
+      tempDiv.appendChild(titleSection)
 
       // Create content container with enhanced styling for KaTeX
       const contentContainer = document.createElement("div")
       contentContainer.id = "markdown-content-container"
       contentContainer.className = "prose max-w-none"
-      contentContainer.style.fontSize = "14px"
-      contentContainer.style.lineHeight = "1.6"
-      contentContainer.style.color = "rgb(0,0,0)"
+      contentContainer.style.fontSize = "15px"
+      contentContainer.style.lineHeight = "1.75"
+      contentContainer.style.color = "#2d2d2d"
       contentContainer.style.fontWeight = "normal"
+      contentContainer.style.backgroundColor = "#ffffff"
+      contentContainer.style.borderRadius = "12px"
+      contentContainer.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.04)"
+      contentContainer.style.margin = "0 50px 40px 50px"
+      contentContainer.style.padding = "40px 50px"
 
       // Ensure KaTeX CSS is loaded for PDF rendering - use an embedded style to avoid CORS issues
       const katexCss = document.createElement("style")
@@ -452,56 +479,167 @@ export function EnhancedPdfGenerator({ markdown, fileName, taskType }: EnhancedP
       `
       document.head.appendChild(katexFontsStyle)
 
-      // Add custom CSS for better KaTeX rendering and to force black text
+      // Add custom CSS for better KaTeX rendering and engaging design
       const customStyle = document.createElement("style")
       customStyle.textContent = `
-        /* Force all text to be black */
+        /* Enhanced typography and spacing */
         #markdown-content-container * {
-          color: rgb(0,0,0) !important;
+          color: #2d2d2d !important;
           opacity: 1 !important;
         }
         
-        /* Specific overrides for common elements */
-        #markdown-content-container p, 
-        #markdown-content-container h1, 
-        #markdown-content-container h2, 
-        #markdown-content-container h3, 
-        #markdown-content-container h4, 
-        #markdown-content-container h5, 
-        #markdown-content-container h6, 
-        #markdown-content-container span, 
-        #markdown-content-container div, 
-        #markdown-content-container li, 
-        #markdown-content-container ul, 
-        #markdown-content-container ol, 
-        #markdown-content-container a, 
-        #markdown-content-container strong, 
-        #markdown-content-container em, 
-        #markdown-content-container blockquote, 
-        #markdown-content-container code, 
-        #markdown-content-container pre {
-          color: rgb(0,0,0) !important;
-          text-shadow: none !important;
+        /* Headings with visual hierarchy */
+        #markdown-content-container h1 {
+          color: #1a1a1a !important;
+          font-size: 24pt !important;
+          font-weight: 700 !important;
+          margin-top: 32pt !important;
+          margin-bottom: 16pt !important;
+          padding-bottom: 12pt !important;
+          border-bottom: 3px solid #8b5cf6 !important;
+          line-height: 1.3 !important;
         }
         
-        /* Ensure bullet points and numbered list markers are black */
-        #markdown-content-container ul li::before,
-        #markdown-content-container ol li::before {
-          color: rgb(0,0,0) !important;
+        #markdown-content-container h2 {
+          color: #1a1a1a !important;
+          font-size: 20pt !important;
+          font-weight: 700 !important;
+          margin-top: 28pt !important;
+          margin-bottom: 14pt !important;
+          padding-left: 12pt !important;
+          border-left: 4px solid #8b5cf6 !important;
+          line-height: 1.4 !important;
+        }
+        
+        #markdown-content-container h3 {
+          color: #8b5cf6 !important;
+          font-size: 16pt !important;
+          font-weight: 600 !important;
+          margin-top: 24pt !important;
+          margin-bottom: 12pt !important;
+          line-height: 1.4 !important;
+        }
+        
+        #markdown-content-container h4 {
+          color: #8b5cf6 !important;
+          font-size: 14pt !important;
+          font-weight: 600 !important;
+          margin-top: 20pt !important;
+          margin-bottom: 10pt !important;
+          font-style: italic !important;
+        }
+        
+        /* Paragraphs with better spacing */
+        #markdown-content-container p {
+          color: #2d2d2d !important;
+          margin: 14pt 0 !important;
+          line-height: 1.75 !important;
+          text-align: left !important;
+        }
+        
+        /* Enhanced lists */
+        #markdown-content-container ul,
+        #markdown-content-container ol {
+          margin: 16pt 0 !important;
+          padding-left: 28pt !important;
+        }
+        
+        #markdown-content-container li {
+          color: #2d2d2d !important;
+          margin-bottom: 8pt !important;
+          line-height: 1.7 !important;
+        }
+        
+        #markdown-content-container ul li::marker {
+          color: #8b5cf6 !important;
+        }
+        
+        #markdown-content-container ol li::marker {
+          color: #8b5cf6 !important;
+          font-weight: 600 !important;
+        }
+        
+        /* Enhanced blockquotes */
+        #markdown-content-container blockquote {
+          border-left: 4px solid #8b5cf6 !important;
+          background: #f5f3ff !important;
+          margin: 20pt 0 !important;
+          padding: 16pt 20pt !important;
+          border-radius: 4px !important;
+          font-style: italic !important;
+          color: #2d2d2d !important;
+        }
+        
+        /* Enhanced code blocks */
+        #markdown-content-container code {
+          background: #f5f5f5 !important;
+          color: #8b5cf6 !important;
+          padding: 2pt 6pt !important;
+          border-radius: 4px !important;
+          font-weight: 500 !important;
+        }
+        
+        #markdown-content-container pre {
+          background: #1a1a1a !important;
+          color: #ffffff !important;
+          padding: 16pt !important;
+          border-radius: 8px !important;
+          border-left: 4px solid #8b5cf6 !important;
+          overflow-x: auto !important;
+        }
+        
+        #markdown-content-container pre code {
+          background: transparent !important;
+          color: #ffffff !important;
+          padding: 0 !important;
+        }
+        
+        /* Links */
+        #markdown-content-container a {
+          color: #8b5cf6 !important;
+          text-decoration: underline !important;
+        }
+        
+        /* Strong and emphasis */
+        #markdown-content-container strong {
+          color: #1a1a1a !important;
+          font-weight: 700 !important;
+        }
+        
+        #markdown-content-container em {
+          color: #2d2d2d !important;
+          font-style: italic !important;
+        }
+        
+        /* Horizontal rules */
+        #markdown-content-container hr {
+          border: none !important;
+          height: 2px !important;
+          background: linear-gradient(to right, #8b5cf6, transparent) !important;
+          margin: 32pt 0 !important;
         }
       `
       contentContainer.appendChild(customStyle)
       tempDiv.appendChild(contentContainer)
 
-      // Add footer
+      // Add engaging footer
       const footer = document.createElement("div")
-      footer.style.marginTop = "30px"
-      footer.style.borderTop = "1px solid #eaeaea"
-      footer.style.paddingTop = "10px"
-      footer.style.fontSize = "10px"
-      footer.style.color = "rgb(0,0,0)"
+      footer.style.marginTop = "40px"
+      footer.style.padding = "30px 50px"
+      footer.style.background = "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)"
+      footer.style.borderTop = "3px solid #8b5cf6"
       footer.style.textAlign = "center"
-      footer.innerHTML = "© 2025 Study Better. All rights reserved."
+      footer.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;">
+          <div style="width: 40px; height: 3px; background: #8b5cf6; border-radius: 2px;"></div>
+          <div style="font-size: 12px; color: #8b5cf6; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Study Better</div>
+          <div style="width: 40px; height: 3px; background: #8b5cf6; border-radius: 2px;"></div>
+        </div>
+        <div style="font-size: 11px; color: #666; font-weight: 400; line-height: 1.6;">
+          © 2025 Study Better. All rights reserved.<br/>
+          <span style="color: #999; font-size: 10px;">AI-Powered Learning Platform</span>
+        </div>
+      `
       tempDiv.appendChild(footer)
 
       // Append to body but hide it
@@ -538,57 +676,60 @@ export function EnhancedPdfGenerator({ markdown, fileName, taskType }: EnhancedP
 components={{
   p: ({ node, ...props }: any) => (
     <p style={{
-      color: "rgb(0,0,0)",
-      fontSize: "11pt",
-      margin: "10pt 0",
-      lineHeight: "1.5",
+      color: "#2d2d2d",
+      fontSize: "15pt",
+      margin: "14pt 0",
+      lineHeight: "1.75",
       textAlign: "left"
     }} {...props} />
   ),
 
   h1: ({ node, ...props }: any) => (
     <h1 style={{
-      color: "rgb(0,0,0)",
-      fontSize: "18pt",
+      color: "#1a1a1a",
+      fontSize: "24pt",
       fontWeight: 700,
-      textAlign: "center",
-      marginTop: "24pt",
-      marginBottom: "12pt",
-      borderBottom: "1px solid #d0d0d0",
-      paddingBottom: "4pt"
+      textAlign: "left",
+      marginTop: "32pt",
+      marginBottom: "16pt",
+      borderBottom: "3px solid #8b5cf6",
+      paddingBottom: "12pt",
+      lineHeight: "1.3"
     }} {...props} />
   ),
 
   h2: ({ node, ...props }: any) => (
     <h2 style={{
-      color: "rgb(0,0,0)",
-      fontSize: "16pt",
+      color: "#1a1a1a",
+      fontSize: "20pt",
       fontWeight: 700,
-      marginTop: "18pt",
-      marginBottom: "10pt",
-      borderBottom: "1px solid #d0d0d0",
-      paddingBottom: "4pt"
+      marginTop: "28pt",
+      marginBottom: "14pt",
+      paddingLeft: "12pt",
+      borderLeft: "4px solid #8b5cf6",
+      lineHeight: "1.4"
     }} {...props} />
   ),
 
   h3: ({ node, ...props }: any) => (
     <h3 style={{
-      color: "rgb(0,0,0)",
-      fontSize: "14pt",
+      color: "#8b5cf6",
+      fontSize: "16pt",
       fontWeight: 600,
-      marginTop: "16pt",
-      marginBottom: "8pt"
+      marginTop: "24pt",
+      marginBottom: "12pt",
+      lineHeight: "1.4"
     }} {...props} />
   ),
 
   h4: ({ node, ...props }: any) => (
     <h4 style={{
-      color: "rgb(0,0,0)",
-      fontSize: "12pt",
+      color: "#8b5cf6",
+      fontSize: "14pt",
       fontWeight: 600,
       fontStyle: "italic",
-      marginTop: "14pt",
-      marginBottom: "6pt"
+      marginTop: "20pt",
+      marginBottom: "10pt"
     }} {...props} />
   ),
 
@@ -615,47 +756,47 @@ components={{
 
   li: ({ node, ...props }: any) => (
     <li style={{
-      color: "rgb(0,0,0)",
-      fontSize: "11pt",
-      marginBottom: "6pt",
-      lineHeight: "1.5"
+      color: "#2d2d2d",
+      fontSize: "15pt",
+      marginBottom: "8pt",
+      lineHeight: "1.7"
     }} {...props} />
   ),
 
   ul: ({ node, ...props }: any) => (
     <ul style={{
       listStyleType: "disc",
-      paddingLeft: "24pt",
-      margin: "10pt 0"
+      paddingLeft: "28pt",
+      margin: "16pt 0"
     }} {...props} />
   ),
 
   ol: ({ node, ...props }: any) => (
     <ol style={{
       listStyleType: "decimal",
-      paddingLeft: "24pt",
-      margin: "10pt 0"
+      paddingLeft: "28pt",
+      margin: "16pt 0"
     }} {...props} />
   ),
 
   a: ({ node, ...props }: any) => (
     <a style={{
-      color: "#0070f3",
-      textDecoration: "none"
+      color: "#8b5cf6",
+      textDecoration: "underline"
     }} {...props} />
   ),
 
   strong: ({ node, ...props }: any) => (
     <strong style={{
       fontWeight: 700,
-      color: "rgb(0,0,0)"
+      color: "#1a1a1a"
     }} {...props} />
   ),
 
   em: ({ node, ...props }: any) => (
     <em style={{
       fontStyle: "italic",
-      color: "rgb(0,0,0)"
+      color: "#2d2d2d"
     }} {...props} />
   ),
 
@@ -664,27 +805,50 @@ components={{
       <code style={{
         fontFamily: "monospace",
         fontSize: "0.9em",
-        padding: "0.2rem 0.4rem",
+        padding: "2pt 6pt",
         backgroundColor: "#f5f5f5",
-        borderRadius: "0.25rem",
-        color: "rgb(0,0,0)"
+        borderRadius: "4px",
+        color: "#8b5cf6",
+        fontWeight: 500
       }} {...props} />
     ) : (
       <code style={{
-        color: "rgb(0,0,0)"
+        color: "#8b5cf6"
       }} {...props} />
     ),
 
   pre: ({ node, ...props }: any) => (
     <pre style={{
-      color: "rgb(0,0,0)",
-      backgroundColor: "#f5f5f5",
-      padding: "1rem",
-      borderRadius: "0.35rem",
+      color: "#ffffff",
+      backgroundColor: "#1a1a1a",
+      padding: "16pt",
+      borderRadius: "8px",
+      borderLeft: "4px solid #8b5cf6",
       overflowX: "auto",
-      margin: "2rem 0",
-      fontSize: "0.95rem",
-      lineHeight: "1.5"
+      margin: "20pt 0",
+      fontSize: "14pt",
+      lineHeight: "1.6"
+    }} {...props} />
+  ),
+
+  blockquote: ({ node, ...props }: any) => (
+    <blockquote style={{
+      borderLeft: "4px solid #8b5cf6",
+      background: "#f5f3ff",
+      margin: "20pt 0",
+      padding: "16pt 20pt",
+      borderRadius: "4px",
+      fontStyle: "italic",
+      color: "#2d2d2d"
+    }} {...props} />
+  ),
+
+  hr: ({ node, ...props }: any) => (
+    <hr style={{
+      border: "none",
+      height: "2px",
+      background: "linear-gradient(to right, #8b5cf6, transparent)",
+      margin: "32pt 0"
     }} {...props} />
   ),
 }}
@@ -697,12 +861,12 @@ components={{
         // Wait longer for KaTeX to fully render (increased to 3000ms)
         await new Promise((resolve) => setTimeout(resolve, 3000))
 
-        // After rendering, force all text to be black with JavaScript
+        // Ensure proper color rendering for PDF (CSS should handle most, but ensure visibility)
         const allTextElements = contentElement.querySelectorAll(
           "p, h1, h2, h3, h4, h5, h6, span, div, li, a, strong, em, blockquote, code, pre",
         )
         allTextElements.forEach((el) => {
-          ;(el as HTMLElement).style.color = "rgb(0,0,0)"
+          // Don't override colors - let CSS handle it, just ensure opacity
           ;(el as HTMLElement).style.opacity = "1"
         })
 
@@ -796,106 +960,111 @@ components={{
 
 /* 🏷 Headings */
 .pdf-export h1 {
-  font-size: 18pt;
+  font-size: 24pt;
   font-weight: 700;
-  text-align: center;
-  margin-top: 24pt;
-  margin-bottom: 12pt;
-  color: #000000;
-  border-bottom: 1px solid #d0d0d0;
-  padding-bottom: 4pt;
+  text-align: left;
+  margin-top: 32pt;
+  margin-bottom: 16pt;
+  color: #1a1a1a;
+  border-bottom: 3pt solid #8b5cf6;
+  padding-bottom: 12pt;
+  line-height: 1.3;
 }
 
 .pdf-export h2 {
-  font-size: 16pt;
+  font-size: 20pt;
   font-weight: 700;
-  margin-top: 18pt;
-  margin-bottom: 10pt;
-  color: #000000;
-  border-bottom: 1px solid #d0d0d0;
-  padding-bottom: 4pt;
+  margin-top: 28pt;
+  margin-bottom: 14pt;
+  padding-left: 12pt;
+  border-left: 4pt solid #8b5cf6;
+  color: #1a1a1a;
+  line-height: 1.4;
 }
 
 .pdf-export h3 {
-  font-size: 14pt;
+  font-size: 16pt;
   font-weight: 600;
-  margin-top: 16pt;
-  margin-bottom: 8pt;
-  color: #000000;
+  margin-top: 24pt;
+  margin-bottom: 12pt;
+  color: #8b5cf6;
+  line-height: 1.4;
 }
 
 .pdf-export h4 {
-  font-size: 12pt;
+  font-size: 14pt;
   font-weight: 600;
   font-style: italic;
-  margin-top: 14pt;
-  margin-bottom: 6pt;
-  color: #000000;
+  margin-top: 20pt;
+  margin-bottom: 10pt;
+  color: #8b5cf6;
 }
 
 /* 📝 Paragraphs */
 .pdf-export p {
-  font-size: 11pt;
-  margin: 10pt 0;
-  line-height: 1.5;
-  color: #000000;
+  font-size: 15pt;
+  margin: 14pt 0;
+  line-height: 1.75;
+  color: #2d2d2d;
   text-align: left;
 }
 
 /* 📋 Lists */
 .pdf-export ul {
   list-style-type: disc;
-  padding-left: 24pt;
-  margin: 10pt 0;
+  padding-left: 28pt;
+  margin: 16pt 0;
 }
 
 .pdf-export ol {
   list-style-type: decimal;
-  padding-left: 24pt;
-  margin: 10pt 0;
-  line-height: 1.5;
+  padding-left: 28pt;
+  margin: 16pt 0;
+  line-height: 1.7;
 }
 
 .pdf-export li {
-  font-size: 11pt;
-  margin-bottom: 6pt;
-  color: #000000;
-  line-height: 1.5;
+  font-size: 15pt;
+  margin-bottom: 8pt;
+  color: #2d2d2d;
+  line-height: 1.7;
 }
 
 /* ✅ List Marker Fix */
 .pdf-export ul li::marker,
 .pdf-export ol li::marker {
-  color: #000000;
+  color: #8b5cf6;
+  font-weight: 600;
 }
 
 /* 🔤 Text emphasis */
 .pdf-export strong {
   font-weight: 700;
-  color: #000000;
+  color: #1a1a1a;
 }
 
 .pdf-export em {
   font-style: italic;
-  color: #000000;
+  color: #2d2d2d;
 }
 
 /* ⬇️ Horizontal rule */
 .pdf-export hr {
   border: 0;
-  height: 1pt;
-  background-color: #cccccc;
-  margin: 24pt 0;
+  height: 2pt;
+  background: linear-gradient(to right, #8b5cf6, transparent);
+  margin: 32pt 0;
 }
 
 /* ❓ Blockquotes (for examples, quotes, questions) */
 .pdf-export blockquote {
-  border-left: 3pt solid #d0d0d0;
-  background-color: #f9f9f9;
-  margin: 14pt 0;
-  padding: 10pt 12pt;
+  border-left: 4pt solid #8b5cf6;
+  background-color: #f5f3ff;
+  margin: 20pt 0;
+  padding: 16pt 20pt;
+  border-radius: 4pt;
   font-style: italic;
-  color: #000000;
+  color: #2d2d2d;
 }
 
 /* 📊 Tables */
@@ -920,23 +1089,31 @@ components={{
 
 /* 📐 Code blocks */
 .pdf-export pre {
-  background-color: #f5f5f5;
-  padding: 1rem;
-  border-radius: 0.35rem;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  padding: 16pt;
+  border-radius: 8pt;
+  border-left: 4pt solid #8b5cf6;
   overflow-x: auto;
-  margin: 2rem 0;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: #000000;
+  margin: 20pt 0;
+  font-size: 14pt;
+  line-height: 1.6;
 }
 
 .pdf-export code {
   font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  padding: 0.2rem 0.4rem;
+  font-size: 0.9em;
+  padding: 2pt 6pt;
   background-color: #f5f5f5;
-  border-radius: 0.25rem;
-  color: #000000;
+  border-radius: 4pt;
+  color: #8b5cf6;
+  font-weight: 500;
+}
+
+.pdf-export pre code {
+  background-color: transparent;
+  color: #ffffff;
+  padding: 0;
 }
 
 /* 🧠 Practice question box */
@@ -1170,9 +1347,9 @@ components={{
         // Add the image to the PDF with optimized settings
         singlePagePdf.addImage(imgData, "JPEG", 0, 20, imgWidth, imgHeight, undefined, 'FAST', 0)
 
-        // Add copyright at the bottom
-        singlePagePdf.setFontSize(8)
-        singlePagePdf.setTextColor(0, 0, 0) // Black text for copyright
+        // Add copyright at the bottom with purple accent
+        singlePagePdf.setFontSize(9)
+        singlePagePdf.setTextColor(139, 92, 246) // Purple color (#8b5cf6)
         singlePagePdf.text("© 2025 Study Better. All rights reserved.", imgWidth / 2, Math.min(imgHeight + 30, maxHeight + 30), {
           align: "center",
         })
@@ -1213,7 +1390,11 @@ components={{
   }
 
   return (
-    <Button onClick={generatePdf} disabled={isGenerating} className="w-full">
+    <Button 
+      onClick={generatePdf} 
+      disabled={isGenerating} 
+      className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+    >
       {isGenerating ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

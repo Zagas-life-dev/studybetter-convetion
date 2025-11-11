@@ -237,27 +237,27 @@ export function PdfUploadForm() {
 
   return (
     <div className="space-y-8">
-      <Card className="p-6">
+      <Card className="p-6 bg-white/90 backdrop-blur-sm border-violet-200 shadow-lg">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="pdf">Upload PDF Document</Label>
+            <Label htmlFor="pdf" className="text-gray-700 font-semibold">Upload PDF Document</Label>
             <div
-              className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center"
+              className="border-2 border-dashed border-violet-300 rounded-xl p-8 text-center bg-gradient-to-br from-violet-50 to-purple-50 hover:border-violet-400 transition-colors"
               onDrop={handleDrop}
               onDragOver={handleDragOver}
             >
               {file ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <FileText className="h-6 w-6 text-blue-500" />
-                  <span className="text-sm font-medium">{file.name}</span>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setFile(null)}>
+                <div className="flex items-center justify-center space-x-3">
+                  <FileText className="h-6 w-6 text-violet-600" />
+                  <span className="text-sm font-medium text-gray-700">{file.name}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setFile(null)} className="text-violet-600 hover:text-violet-700">
                     Change
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Upload className="h-8 w-8 text-gray-400 mx-auto" />
-                  <div className="text-sm text-gray-500">Drag and drop your PDF here, or click to browse</div>
+                <div className="space-y-3">
+                  <Upload className="h-10 w-10 text-violet-400 mx-auto" />
+                  <div className="text-sm text-gray-600 font-medium">Drag and drop your PDF here, or click to browse</div>
                   <Input
                     id="pdf"
                     type="file"
@@ -267,13 +267,18 @@ export function PdfUploadForm() {
                     className="hidden"
                     ref={fileInputRef}
                   />
-                  <Button type="button" variant="outline" onClick={() => document.getElementById("pdf")?.click()}>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => document.getElementById("pdf")?.click()}
+                    className="bg-white border-violet-300 text-violet-600 hover:bg-violet-50 hover:border-violet-400"
+                  >
                     Select PDF
                   </Button>
                 </div>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Maximum file size: 10MB. Only PDF files are accepted.</p>
+            <p className="text-xs text-gray-500 mt-1">Maximum file size: 10MB. Only PDF files are accepted.</p>
           </div>
 
           <div className="space-y-2">
@@ -302,7 +307,11 @@ export function PdfUploadForm() {
             />
           </div>
 
-          <Button type="submit" disabled={isLoading || !file || !instructions} className="w-full">
+          <Button 
+            type="submit" 
+            disabled={isLoading || !file || !instructions} 
+            className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold py-6 text-lg shadow-lg hover:shadow-xl transition-all"
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -318,12 +327,12 @@ export function PdfUploadForm() {
         </form>
 
         {processingStep && (
-          <div className="mt-6 space-y-2">
+          <div className="mt-6 space-y-2 p-4 bg-violet-50 rounded-lg border border-violet-200">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">{processingStep}</span>
-              <span className="text-sm text-muted-foreground">{progress}%</span>
+              <span className="text-sm font-medium text-violet-700">{processingStep}</span>
+              <span className="text-sm text-violet-600 font-semibold">{progress}%</span>
             </div>
-            <Progress value={progress} className="h-2" />
+            <Progress value={progress} className="h-3 bg-violet-100" />
           </div>
         )}
 
@@ -338,11 +347,11 @@ export function PdfUploadForm() {
 
       {markdownContent && (
         <div className="space-y-6">
-          <Card className="p-6">
+          <Card className="p-6 bg-white/90 backdrop-blur-sm border-violet-200 shadow-lg">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <h2 className="text-xl font-semibold">AI Agent Response</h2>
+                <CheckCircle className="h-5 w-5 text-violet-600" />
+                <h2 className="text-xl font-semibold text-gray-800">AI Agent Response</h2>
               </div>
             </div>
 
@@ -358,9 +367,9 @@ export function PdfUploadForm() {
             )}
 
             <Tabs defaultValue="preview" className="mb-6">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-                <TabsTrigger value="export">Export</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-violet-100">
+                <TabsTrigger value="preview" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white">Preview</TabsTrigger>
+                <TabsTrigger value="export" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white">Export</TabsTrigger>
               </TabsList>
               <TabsContent value="preview" className="mt-4">
                 <div className="prose max-w-none dark:prose-invert">
@@ -383,7 +392,7 @@ export function PdfUploadForm() {
                           Download the raw markdown text that can be used in markdown editors.
                         </p>
                       </div>
-                      <Button onClick={downloadMarkdown} className="w-full">
+                      <Button onClick={downloadMarkdown} className="w-full bg-violet-600 hover:bg-violet-700 text-white">
                         <Download className="mr-2 h-4 w-4" />
                         Download Markdown
                       </Button>
@@ -408,7 +417,7 @@ export function PdfUploadForm() {
            
                   </div>
                   <div className="mt-2">
-                    <Button variant="outline" onClick={copyToClipboard} className="w-full">
+                    <Button variant="outline" onClick={copyToClipboard} className="w-full border-violet-300 text-violet-600 hover:bg-violet-50 hover:border-violet-400">
                       <Copy className="mr-2 h-4 w-4" />
                       Copy to Clipboard
                     </Button>
