@@ -333,6 +333,84 @@ export function MarkdownPreview({ markdown }: MarkdownPreviewProps) {
               />
             ),
           
+            // Images - supports URLs, data URLs, and base64
+            img: ({ node, src, alt, ...props }: { node?: any; src?: string; alt?: string; [key: string]: any }) => {
+              // Handle various image URL formats
+              const imageSrc = src?.trim() || null
+              
+              // Don't render if src is empty or invalid - use span with block display to avoid nesting issues
+              if (!imageSrc || imageSrc === "") {
+                return (
+                  <span
+                    style={{
+                      display: "block",
+                      padding: "1rem",
+                      margin: "1.5rem auto",
+                      backgroundColor: "#f5f5f5",
+                      borderRadius: "8px",
+                      border: "2px dashed #eaeaea",
+                      textAlign: "center",
+                      color: "rgb(0,0,0)",
+                    }}
+                  >
+                    {alt || "Image not available"}
+                  </span>
+                )
+              }
+
+              const isValidImageUrl = imageSrc.startsWith("http://") || 
+                                     imageSrc.startsWith("https://") || 
+                                     imageSrc.startsWith("data:image/") ||
+                                     imageSrc.startsWith("/") ||
+                                     imageSrc.startsWith("./")
+              
+              if (!isValidImageUrl) {
+                // If it's not a valid URL format, show placeholder - use span with block display
+                return (
+                  <span
+                    style={{
+                      display: "block",
+                      padding: "1rem",
+                      margin: "1.5rem auto",
+                      backgroundColor: "#f5f5f5",
+                      borderRadius: "8px",
+                      border: "2px dashed #eaeaea",
+                      textAlign: "center",
+                      color: "rgb(0,0,0)",
+                    }}
+                  >
+                    {alt || "Invalid image URL"}
+                  </span>
+                )
+              }
+
+              return (
+                <img
+                  src={imageSrc}
+                  alt={alt || "Image"}
+                  style={{
+                    maxWidth: "100%",
+                    height: "auto",
+                    display: "block",
+                    margin: "1.5rem auto",
+                    borderRadius: "8px",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    border: "2px solid #eaeaea",
+                    backgroundColor: "#ffffff",
+                    padding: "0.5rem",
+                  }}
+                  loading="lazy"
+                  onError={(e) => {
+                    // Fallback if image fails to load
+                    const target = e.target as HTMLImageElement
+                    target.style.display = "none"
+                    console.error("Failed to load image:", imageSrc)
+                  }}
+                  {...props}
+                />
+              )
+            },
+
             // Centered KaTeX blocks (requires katex rendered separately)
             div: ({ node, className, ...props }: { node?: any; className?: string; [key: string]: any }) => {
               if (className === "katex-display") {

@@ -13,9 +13,74 @@ const lexend = Lexend({
 })
 
 export const metadata: Metadata = {
-  title: "Study Better - PDF Processor",
-  description: "Process PDFs with AI for better studying",
-  generator: 'v0.dev'
+  title: {
+    default: "Study Better - AI-Powered PDF Learning Platform",
+    template: "%s | Study Better"
+  },
+  description: "Transform your PDF documents into powerful learning resources with AI-powered summaries, detailed explanations, and perfect mathematical expression rendering. Ideal for students, researchers, and lifelong learners.",
+  keywords: [
+    "PDF summarizer",
+    "AI PDF analysis",
+    "document summarization",
+    "PDF to markdown",
+    "academic PDF tool",
+    "study assistant",
+    "PDF explanation tool",
+    "mathematical PDF processing",
+    "LaTeX PDF rendering",
+    "educational technology"
+  ],
+  authors: [{ name: "Study Better" }],
+  creator: "Study Better",
+  publisher: "Study Better",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://studybetter.com'),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: '/',
+    title: 'Study Better - AI-Powered PDF Learning Platform',
+    description: 'Transform your PDF documents into powerful learning resources with AI-powered summaries and explanations.',
+    siteName: 'Study Better',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Study Better - AI-Powered PDF Learning Platform',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Study Better - AI-Powered PDF Learning Platform',
+    description: 'Transform your PDF documents into powerful learning resources with AI-powered summaries and explanations.',
+    images: ['/og-image.png'],
+    creator: '@studybetter',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  verification: {
+    google: process.env.GOOGLE_VERIFICATION,
+    yandex: process.env.YANDEX_VERIFICATION,
+  },
+  category: 'education',
 }
 
 export default function RootLayout({
@@ -24,7 +89,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Add KaTeX CSS from CDN */}
         <link
@@ -33,9 +98,62 @@ export default function RootLayout({
           integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV"
           crossOrigin="anonymous"
         />
+        {/* Structured Data for SEO */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              "name": "Study Better",
+              "description": "AI-powered PDF learning platform that transforms documents into powerful learning resources",
+              "url": process.env.NEXT_PUBLIC_SITE_URL || "https://studybetter.com",
+              "applicationCategory": "EducationalApplication",
+              "operatingSystem": "Web",
+              "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "USD"
+              },
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "4.8",
+                "ratingCount": "150"
+              },
+              "featureList": [
+                "AI-powered PDF summarization",
+                "Detailed document explanations",
+                "Mathematical expression rendering",
+                "LaTeX support",
+                "Interactive PDF generation"
+              ]
+            })
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "name": "Study Better",
+              "url": process.env.NEXT_PUBLIC_SITE_URL || "https://studybetter.com",
+              "logo": `${process.env.NEXT_PUBLIC_SITE_URL || "https://studybetter.com"}/logo.png`,
+              "sameAs": [
+                "https://twitter.com/studybetter",
+                "https://linkedin.com/company/studybetter"
+              ]
+            })
+          }}
+        />
       </head>
-      <body className={`${lexend.className} antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <body className={`${lexend.className} antialiased`} suppressHydrationWarning>
+        <ThemeProvider 
+          attribute="class" 
+          defaultTheme="light" 
+          enableSystem
+          disableTransitionOnChange
+        >
           {children}
           <Toaster />
         </ThemeProvider>

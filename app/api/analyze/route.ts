@@ -1,4 +1,7 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from '@/lib/supabase/server'
+import { NextResponse, type NextRequest } from 'next/server'
+import { buildPersonalizedPrompt } from "@/lib/ai/personalize-prompt"
+import type { UserProfile } from "@/hooks/use-user"
 
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY
 const SUMMARY_AGENT_ID = "ag:ab291cb7:20250507:untitled-agent:64806fa7" // Original agent for summarization
@@ -7,34 +10,161 @@ const EXPLAIN_AGENT_ID = "ag:ab291cb7:20250510:explain:9b572715" // New agent fo
 // Maximum size for processing in a single request (in bytes) - 5MB is usually safe
 const MAX_SINGLE_REQUEST_SIZE = 5 * 1024 * 1024;  // 5MB
 
-export async function POST(request: NextRequest) {
-  // Check if this is a proper POST request with content
-  if (request.method !== "POST") {
-    return NextResponse.json({ error: "Method not allowed" }, { status: 405 })
+// Helper function to get neurodivergence-specific prompt modifiers
+function getNeurodivergencePromptModifier(neurodivergenceType: string | null): string {
+  if (!neurodivergenceType || neurodivergenceType === "none") {
+    return ""
   }
 
+  const modifiers: Record<string, string> = {
+    adhd: `
+CRITICAL: Optimize content for ADHD learners:
+- Use SHORT, CONCISE sentences (max 15-20 words per sentence)
+- Break complex ideas into BULLET POINTS or numbered lists
+- Use CLEAR HEADINGS and subheadings to create visual breaks
+- Add ACTIONABLE summaries at the end of each section
+- Use BOLD and emphasis strategically to highlight key points
+- Avoid long paragraphs - split into 2-3 sentence chunks
+- Include "Key Takeaway" boxes for important concepts
+- Use active voice and direct language
+- Add visual structure with emojis or symbols (✓, →, ⚠) where appropriate
+- Create clear transitions between topics
+- Focus on practical applications and real-world examples
+- Minimize abstract concepts without context`,
+
+    dyslexia: `
+CRITICAL: Optimize content for dyslexic learners:
+- Use SIMPLE, CLEAR language - avoid jargon and complex vocabulary
+- Break down complex words and explain technical terms
+- Use SHORT sentences (10-15 words maximum)
+- Structure content with CLEAR visual hierarchy (headings, lists, spacing)
+- Use BULLET POINTS and numbered lists instead of long paragraphs
+- Provide CONTEXT and examples for abstract concepts
+- Use CONCRETE examples and analogies
+- Repeat key concepts in different ways
+- Use BOLD for important terms (but sparingly)
+- Avoid homophones and ambiguous words
+- Use active voice throughout
+- Break complex topics into smaller, digestible sections
+- Include pronunciation guides for difficult terms if needed`,
+
+    autism: `
+CRITICAL: Optimize content for autistic learners:
+- Use CLEAR, LITERAL language - avoid idioms, metaphors, and figurative speech
+- Provide EXPLICIT, STEP-BY-STEP explanations
+- Use STRUCTURED, CONSISTENT formatting throughout
+- Define ALL technical terms and acronyms clearly
+- Use LOGICAL organization with clear hierarchies
+- Provide CONTEXT and background information
+- Use CONCRETE examples and avoid abstract concepts without explanation
+- Be PRECISE and specific - avoid vague language
+- Use CONSISTENT terminology (don't use synonyms for the same concept)
+- Break complex processes into numbered steps
+- Include clear cause-and-effect relationships
+- Use visual structure (headings, lists, tables) to organize information
+- Avoid implied meanings or assumptions`,
+
+    audhd: `
+CRITICAL: Optimize content for AUDHD learners (combines ADHD and Autism needs):
+- Use SHORT, CLEAR, LITERAL sentences (10-15 words max)
+- Break everything into BULLET POINTS or numbered lists
+- Use CLEAR HEADINGS and visual breaks frequently
+- Provide EXPLICIT, STEP-BY-STEP explanations
+- Define ALL technical terms immediately
+- Use CONCRETE examples and avoid abstract concepts
+- Add ACTIONABLE summaries after each section
+- Use CONSISTENT terminology throughout
+- Create CLEAR visual hierarchy with spacing and formatting
+- Use BOLD strategically for key points (but not overuse)
+- Include "Key Takeaway" boxes for important concepts
+- Minimize distractions - focus on essential information
+- Use active voice and direct language
+- Provide context and background for all concepts
+- Structure content predictably and consistently`
+  }
+
+  return modifiers[neurodivergenceType] || ""
+}
+
+export async function POST(request: NextRequest) {
   try {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    // Check usage limit before processing
+    const { data: usageCheck, error: usageError } = await supabase.rpc("check_usage_limit", {
+      p_user_id: user.id,
+      p_action_type: "summary",
+    })
+
+    if (usageError) {
+      return new NextResponse(
+        JSON.stringify({ error: "Failed to check usage limit" }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!usageCheck?.allowed) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "Daily limit reached",
+          message: "You have reached your daily limit of 3 summaries. Please try again tomorrow.",
+          remaining: 0,
+        }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      )
+  }
+
+    // Fetch user profile for personalization
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single()
+
     // Check for form data
     const formData = await request.formData()
     const pdfFile = formData.get("pdf") as File | null
     const instructions = formData.get("instructions") as string | null
     const taskType = formData.get("taskType") as string | null
+    const neurodivergenceType = formData.get("neurodivergenceType") as string | null
 
     // Validate required fields
     if (!pdfFile) {
-      return NextResponse.json({ error: "PDF file is required" }, { status: 400 })
+      return new NextResponse(
+        JSON.stringify({ error: "PDF file is required" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     if (!instructions) {
-      return NextResponse.json({ error: "Instructions are required" }, { status: 400 })
+      return new NextResponse(
+        JSON.stringify({ error: "Instructions are required" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     if (!taskType) {
-      return NextResponse.json({ error: "Task type is required" }, { status: 400 })
+      return new NextResponse(
+        JSON.stringify({ error: "Task type is required" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     if (!MISTRAL_API_KEY) {
-      return NextResponse.json({ error: "Mistral API key is not configured" }, { status: 500 })
+      return new NextResponse(
+        JSON.stringify({ error: "Mistral API key is not configured" }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     console.log("Processing file:", pdfFile.name, "Size:", pdfFile.size, "Type:", pdfFile.type)
@@ -46,28 +176,44 @@ export async function POST(request: NextRequest) {
       
       if (isLargeFile) {
         console.log("Large file detected. Using chunked processing approach.");
-        return await handleLargeDocument(pdfFile, instructions, taskType);
+        const result = await handleLargeDocument(pdfFile, instructions, taskType, neurodivergenceType, profile as UserProfile | null, new NextResponse());
+        // Increment usage after successful processing
+        if (result.status === 200) {
+          await supabase.rpc("increment_usage", {
+            p_user_id: user.id,
+            p_action_type: "summary",
+          })
+        }
+        return result;
       } else {
-        return await processSingleDocument(pdfFile, instructions, taskType);
+        const result = await processSingleDocument(pdfFile, instructions, taskType, neurodivergenceType, profile as UserProfile | null, new NextResponse());
+        // Increment usage after successful processing
+        if (result.status === 200) {
+          await supabase.rpc("increment_usage", {
+            p_user_id: user.id,
+            p_action_type: "summary",
+          })
+        }
+        return result;
       }
     } catch (error) {
       console.error("Error processing request:", error)
-      return NextResponse.json(
-        { error: `Failed to process request: ${error instanceof Error ? error.message : String(error)}` },
-        { status: 500 },
+      return new NextResponse(
+        JSON.stringify({ error: `Failed to process request: ${error instanceof Error ? error.message : String(error)}` }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
       )
     }
   } catch (error) {
-    console.error("Error handling form data:", error)
-    return NextResponse.json(
-      { error: `Server error: ${error instanceof Error ? error.message : String(error)}` },
-      { status: 500 },
+    console.error('Error handling form data:', error)
+    return new NextResponse(
+      JSON.stringify({ error: `Server error: ${error instanceof Error ? error.message : String(error)}` }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 }
 
 // Process a single document in one request
-async function processSingleDocument(pdfFile: File, instructions: string, taskType: string) {
+async function processSingleDocument(pdfFile: File, instructions: string, taskType: string, neurodivergenceType: string | null, profile: UserProfile | null, res: NextResponse) {
   // Step 1: Upload the file to Mistral's files API
   const fileFormData = new FormData()
   fileFormData.append("file", pdfFile)
@@ -85,7 +231,10 @@ async function processSingleDocument(pdfFile: File, instructions: string, taskTy
   if (!fileUploadResponse.ok) {
     const errorText = await fileUploadResponse.text()
     console.error("File upload error:", errorText)
-    return NextResponse.json({ error: `Failed to upload PDF file: ${errorText}` }, { status: 500 })
+    return new NextResponse(
+      JSON.stringify({ error: `Failed to upload PDF file: ${errorText}` }),
+      { status: 500, headers: res.headers }
+    )
   }
 
   const fileData = await fileUploadResponse.json()
@@ -104,7 +253,10 @@ async function processSingleDocument(pdfFile: File, instructions: string, taskTy
   if (!signedUrlResponse.ok) {
     const errorText = await signedUrlResponse.text()
     console.error("Signed URL error:", errorText)
-    return NextResponse.json({ error: `Failed to get signed URL: ${errorText}` }, { status: 500 })
+    return new NextResponse(
+      JSON.stringify({ error: `Failed to get signed URL: ${errorText}` }),
+      { status: 500, headers: res.headers }
+    )
   }
 
   const signedUrlData = await signedUrlResponse.json()
@@ -116,11 +268,14 @@ async function processSingleDocument(pdfFile: File, instructions: string, taskTy
   const agentId = taskType === "summarize" ? SUMMARY_AGENT_ID : EXPLAIN_AGENT_ID
   console.log(`Using agent ID ${agentId} for task type: ${taskType}`)
   
+  const neurodivergenceModifier = getNeurodivergencePromptModifier(neurodivergenceType)
+  const personalizedPrompt = buildPersonalizedPrompt(profile)
+  
   const systemPrompt = `You are an expert at analyzing PDF documents. 
 Your task is to ${taskType === "summarize" ? "summarize" : "explain in detail"} the content of the PDF according to your system prompt.
 Format your response in Markdown, including proper headings, lists, and emphasis.
 If the content contains mathematical expressions, format them using LaTeX notation with $ for inline math and $$ for block math.
-Be thorough and accurate in your analysis.`
+Be thorough and accurate in your analysis.${neurodivergenceModifier}${personalizedPrompt}`
 
   const agentPayload = {
     agent_id: agentId,
@@ -135,7 +290,7 @@ Be thorough and accurate in your analysis.`
         content: [
           {
             type: "text",
-            text: `Here are my instructions: ${instructions}`,
+            text: `Here are my instructions: ${instructions}${neurodivergenceModifier ? `\n\n${neurodivergenceModifier}` : ''}`,
           },
           {
             type: "document_url",
@@ -168,12 +323,12 @@ Be thorough and accurate in your analysis.`
   // Check if the response is OK
   if (!agentResponse.ok) {
     console.error("Agent completion error response:", responseText)
-    return NextResponse.json(
-      {
+    return new NextResponse(
+      JSON.stringify({
         error: `Failed to process request: HTTP error ${agentResponse.status}`,
         details: responseText.substring(0, 500), // Include part of the error for debugging
-      },
-      { status: 500 },
+      }),
+      { status: 500 }
     )
   }
 
@@ -184,12 +339,12 @@ Be thorough and accurate in your analysis.`
     console.log("Agent completion successful")
   } catch (e) {
     console.error("Failed to parse agent response:", e)
-    return NextResponse.json(
-      {
+    return new NextResponse(
+      JSON.stringify({
         error: "Failed to parse response from agent API",
         details: responseText.substring(0, 1000), // Include part of the response for debugging
-      },
-      { status: 500 },
+      }),
+      { status: 500 }
     )
   }
 
@@ -208,11 +363,11 @@ Be thorough and accurate in your analysis.`
     console.error("Error deleting file:", error)
   })
 
-  return NextResponse.json({ markdown: markdownContent })
+  return new NextResponse(JSON.stringify({ markdown: markdownContent }), { status: 200 })
 }
 
 // Handle large documents using a progressive analysis approach
-async function handleLargeDocument(pdfFile: File, instructions: string, taskType: string) {
+async function handleLargeDocument(pdfFile: File, instructions: string, taskType: string, neurodivergenceType: string | null, profile: UserProfile | null, res: NextResponse) {
   // Step 1: Upload the file to Mistral's files API with specific ocr and layout parameters
   const fileFormData = new FormData()
   fileFormData.append("file", pdfFile)
@@ -230,7 +385,10 @@ async function handleLargeDocument(pdfFile: File, instructions: string, taskType
   if (!fileUploadResponse.ok) {
     const errorText = await fileUploadResponse.text()
     console.error("File upload error:", errorText)
-    return NextResponse.json({ error: `Failed to upload PDF file: ${errorText}` }, { status: 500 })
+    return new NextResponse(
+      JSON.stringify({ error: `Failed to upload PDF file: ${errorText}` }),
+      { status: 500, headers: res.headers }
+    )
   }
 
   const fileData = await fileUploadResponse.json()
@@ -249,7 +407,10 @@ async function handleLargeDocument(pdfFile: File, instructions: string, taskType
   if (!signedUrlResponse.ok) {
     const errorText = await signedUrlResponse.text()
     console.error("Signed URL error:", errorText)
-    return NextResponse.json({ error: `Failed to get signed URL: ${errorText}` }, { status: 500 })
+    return new NextResponse(
+      JSON.stringify({ error: `Failed to get signed URL: ${errorText}` }),
+      { status: 500, headers: res.headers }
+    )
   }
 
   const signedUrlData = await signedUrlResponse.json()
@@ -259,6 +420,9 @@ async function handleLargeDocument(pdfFile: File, instructions: string, taskType
   // Step 3: Create the agent completion payload with document_url and optimized prompting
   const agentId = taskType === "summarize" ? SUMMARY_AGENT_ID : EXPLAIN_AGENT_ID
   console.log(`Using agent ID ${agentId} for large document ${taskType}`)
+  
+  const neurodivergenceModifier = getNeurodivergencePromptModifier(neurodivergenceType)
+  const personalizedPrompt = buildPersonalizedPrompt(profile)
   
   // Use a modified system prompt to handle large documents more efficiently
   const systemPrompt = `You are an expert at analyzing large PDF documents.
@@ -271,7 +435,7 @@ This is a large document that may exceed context limits, so:
 5. Be concise while ensuring no important information is lost
 
 Format your response in Markdown with proper headings, lists, and emphasis.
-If you cannot process the entire document due to size limitations, focus on providing the most valuable content from what you can process.`
+If you cannot process the entire document due to size limitations, focus on providing the most valuable content from what you can process.${neurodivergenceModifier}${personalizedPrompt}`
 
   // Modified payload with instructions for handling large documents
   const agentPayload = {
@@ -287,7 +451,7 @@ If you cannot process the entire document due to size limitations, focus on prov
         content: [
           {
             type: "text",
-            text: `This is a large document that might exceed normal processing limits. Here are my instructions: ${instructions}\n\nPlease analyze this document as thoroughly as possible, focusing on the most important content if you cannot process everything. If the document contains mathematical notation, ensure it's properly formatted in LaTeX.`,
+            text: `This is a large document that might exceed normal processing limits. Here are my instructions: ${instructions}${neurodivergenceModifier ? `\n\n${neurodivergenceModifier}` : ''}\n\nPlease analyze this document as thoroughly as possible, focusing on the most important content if you cannot process everything. If the document contains mathematical notation, ensure it's properly formatted in LaTeX.`,
           },
           {
             type: "document_url",
@@ -331,15 +495,15 @@ If you cannot process the entire document due to size limitations, focus on prov
       // If the error is related to context length, try with a different approach
       if (responseText.includes("context length") || responseText.includes("token limit") || responseText.includes("too large")) {
         console.log("Context length issue detected. Attempting progressive analysis approach.");
-        return await progressiveAnalysis(fileId, instructions, taskType);
+        return await progressiveAnalysis(fileId, instructions, taskType, neurodivergenceType, profile, res);
       }
       
-      return NextResponse.json(
-        {
+      return new NextResponse(
+        JSON.stringify({
           error: `Failed to process large document: HTTP error ${agentResponse.status}`,
           details: responseText.substring(0, 500),
-        },
-        { status: 500 },
+        }),
+        { status: 500 }
       );
     }
     
@@ -350,12 +514,12 @@ If you cannot process the entire document due to size limitations, focus on prov
       console.log("Large document agent completion successful");
     } catch (e) {
       console.error("Failed to parse large document agent response:", e);
-      return NextResponse.json(
-        {
+      return new NextResponse(
+        JSON.stringify({
           error: "Failed to parse response from agent API for large document",
           details: responseText.substring(0, 1000),
-        },
-        { status: 500 },
+        }),
+        { status: 500 }
       );
     }
     
@@ -373,14 +537,14 @@ If you cannot process the entire document due to size limitations, focus on prov
       console.error("Error deleting file:", error);
     });
     
-    return NextResponse.json({ markdown: markdownContent });
+    return new NextResponse(JSON.stringify({ markdown: markdownContent }), { status: 200 });
   } catch (error) {
     clearTimeout(timeoutId);
     
     // If it's an AbortError (timeout), try progressive analysis
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       console.log("Request timed out. Attempting progressive analysis approach.");
-      return await progressiveAnalysis(fileId, instructions, taskType);
+        return await progressiveAnalysis(fileId, instructions, taskType, neurodivergenceType, profile, res);
     }
     
     throw error; // Re-throw the error for the outer catch block to handle
@@ -388,7 +552,7 @@ If you cannot process the entire document due to size limitations, focus on prov
 }
 
 // Handle extremely large documents through progressive analysis
-async function progressiveAnalysis(fileId: string, instructions: string, taskType: string) {
+async function progressiveAnalysis(fileId: string, instructions: string, taskType: string, neurodivergenceType: string | null, profile: UserProfile | null, res: NextResponse) {
   console.log("Starting progressive analysis for very large document");
   
   try {
@@ -468,6 +632,9 @@ Format your response as a concise markdown outline of the document's structure.`
     // Step 2: Second pass - detailed analysis based on structure
     console.log("Progressive analysis: Second pass - detailed analysis");
     
+    const neurodivergenceModifier = getNeurodivergencePromptModifier(neurodivergenceType)
+    const personalizedPrompt = buildPersonalizedPrompt(profile)
+    
     const secondPassPrompt = `You are analyzing an extremely large document progressively.
 This is the SECOND PASS of the analysis. You now have an outline of the document's structure.
 For this pass:
@@ -477,7 +644,7 @@ For this pass:
 4. Follow the document's structure but prioritize essential information if token limits are reached
 5. Format your response in markdown with proper headings, lists, and emphasis
 
-Your output should be a ${taskType === "summarize" ? "well-structured summary" : "comprehensive explanation"} that captures the essential content.`;
+Your output should be a ${taskType === "summarize" ? "well-structured summary" : "comprehensive explanation"} that captures the essential content.${neurodivergenceModifier}${personalizedPrompt}`;
     
     const secondPassPayload = {
       agent_id: agentId,
@@ -492,7 +659,7 @@ Your output should be a ${taskType === "summarize" ? "well-structured summary" :
           content: [
             {
               type: "text",
-              text: `Here is the structural outline of the document from our first pass:\n\n${structureOutline}\n\nNow, please provide a ${taskType === "summarize" ? "comprehensive summary" : "detailed explanation"} based on this structure, following my instructions: ${instructions}`,
+              text: `Here is the structural outline of the document from our first pass:\n\n${structureOutline}\n\nNow, please provide a ${taskType === "summarize" ? "comprehensive summary" : "detailed explanation"} based on this structure, following my instructions: ${instructions}${neurodivergenceModifier ? `\n\n${neurodivergenceModifier}` : ''}`,
             },
             {
               type: "document_url",
@@ -532,7 +699,7 @@ Your output should be a ${taskType === "summarize" ? "well-structured summary" :
       console.error("Error deleting file:", error);
     });
     
-    return NextResponse.json({ markdown: detailedContent });
+    return new NextResponse(JSON.stringify({ markdown: detailedContent }), { status: 200 });
   } catch (error) {
     // Clean up regardless of success or failure
     console.log("Progressive analysis: Deleting uploaded file after error");
@@ -551,5 +718,5 @@ Your output should be a ${taskType === "summarize" ? "well-structured summary" :
 
 // Add a GET handler to prevent errors on page load/refresh
 export async function GET() {
-  return NextResponse.json({ message: "This endpoint requires a POST request with PDF data" }, { status: 405 })
+  return new NextResponse(JSON.stringify({ message: "This endpoint requires a POST request with PDF data" }), { status: 405 })
 }
