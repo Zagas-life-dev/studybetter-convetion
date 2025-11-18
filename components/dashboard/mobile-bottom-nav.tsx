@@ -9,7 +9,7 @@ const navItems = [
   { href: "/dashboard", label: "Home", icon: FileText },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare, comingSoon: true },
   { href: "/dashboard/new", label: "Create", icon: Plus, isCenter: true },
-  { href: "/dashboard/flashcards", label: "Flashcards", icon: BookOpen, comingSoon: true },
+  { href: "/dashboard/flashcards", label: "Flashcards", icon: BookOpen },
   { href: "/dashboard/quizlet", label: "Quizlet", icon: HelpCircle, comingSoon: true },
 ]
 

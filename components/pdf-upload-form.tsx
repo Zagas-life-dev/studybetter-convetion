@@ -8,42 +8,59 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MarkdownPreview } from "./markdown-preview"
 
 import { EnhancedPdfGenerator } from "./enhanced-pdf-generator"
 
-import { Loader2, FileText, Upload, CheckCircle, Copy, Download, AlertCircle, Bot, Info, Save, LogIn } from "lucide-react"
+import { Loader2, FileText, Upload, CheckCircle, Copy, Download, AlertCircle, Bot, Info, Save } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/hooks/use-auth"
-import Link from "next/link"
+import { useUser } from "@/hooks/use-user"
+import { X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
-interface PdfUploadFormProps {
-  hideHeading?: boolean
-}
+// Premade prompts
+const PREMADE_PROMPTS = [
+  { label: "Use Gen Z language", value: "Use Gen Z language and slang to make this more relatable and engaging." },
+  { label: "Simplify terms", value: "Explain everything in simple, easy-to-understand terms." },
+  { label: "Add examples", value: "Include practical examples and real-world applications." },
+  { label: "Make it concise", value: "Keep it brief and to the point, focusing on key information only." },
+  { label: "Add visual descriptions", value: "Include detailed visual descriptions to help visualize concepts." },
+  { label: "Use analogies", value: "Use analogies and comparisons to explain complex concepts." },
+]
 
-export function PdfUploadForm({ hideHeading = false }: PdfUploadFormProps) {
+export function PdfUploadForm() {
   const [file, setFile] = useState<File | null>(null)
   const [instructions, setInstructions] = useState("")
   const [taskType, setTaskType] = useState("summarize")
-  const [neurodivergenceType, setNeurodivergenceType] = useState<string>("none")
+  const [flashcardCount, setFlashcardCount] = useState("25")
+  const [selectedLearningStyles, setSelectedLearningStyles] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [markdownContent, setMarkdownContent] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [processingStep, setProcessingStep] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
-  const [usageRemaining, setUsageRemaining] = useState<number | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [usageCount, setUsageCount] = useState<{ remaining: number; count: number } | null>(null)
   const { toast } = useToast()
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
+  const { profile } = useUser()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isInitialMount = useRef(true)
+  
+  const MAX_LEARNING_STYLES = 3
+  const AVAILABLE_LEARNING_STYLES = [
+    { value: "adhd", label: "ADHD" },
+    { value: "dyslexia", label: "Dyslexia" },
+    { value: "autism", label: "Autism" },
+  ]
 
   // Clear any errors on component mount/page refresh
   useEffect(() => {
@@ -63,49 +80,28 @@ export function PdfUploadForm({ hideHeading = false }: PdfUploadFormProps) {
     }
   }, [])
 
-  // Fetch usage limits when user is authenticated
-  useEffect(() => {
-    if (user && !authLoading) {
-      fetchUsageLimit()
-    } else {
-      // Reset usage remaining when user logs out
-      setUsageRemaining(null)
-    }
-  }, [user, authLoading])
-
-  const fetchUsageLimit = async () => {
-    // Don't fetch if user is not authenticated
-    if (!user || authLoading) {
-      return
-    }
-
+  const fetchUsageCount = async () => {
     try {
       const response = await fetch("/api/user/usage?action_type=summary")
-      
-      // Handle 401 (Unauthorized) - user session expired or invalid
-      if (response.status === 401) {
-        setUsageRemaining(null)
-        return
-      }
-
-      if (!response.ok) {
-        console.error("Error fetching usage limit:", response.status, response.statusText)
-        return
-      }
-
-      const data = await response.json()
-      if (data.remaining !== undefined) {
-        setUsageRemaining(data.remaining)
+      if (response.ok) {
+        const data = await response.json()
+        setUsageCount({
+          remaining: data.remaining || 0,
+          count: data.count || 0
+        })
       }
     } catch (error) {
-      // Silently fail - don't show errors for usage limit fetches
-      // This prevents console spam when user is not authenticated
-      if (error instanceof Error && !error.message.includes('401')) {
-        console.error("Error fetching usage limit:", error)
-      }
-      setUsageRemaining(null)
+      console.error("Error fetching usage count:", error)
     }
   }
+
+  // Fetch usage count when user is available
+  useEffect(() => {
+    if (user) {
+      fetchUsageCount()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   const validateFile = (file: File): string | null => {
     if (file.size > MAX_FILE_SIZE) {
@@ -161,10 +157,48 @@ export function PdfUploadForm({ hideHeading = false }: PdfUploadFormProps) {
     e.stopPropagation()
   }
 
+  // Handle premade prompt selection
+  const handlePremadePrompt = (promptValue: string) => {
+    if (instructions.trim()) {
+      setInstructions(instructions + " " + promptValue)
+    } else {
+      setInstructions(promptValue)
+    }
+  }
+
+  // Handle learning style selection
+  const handleAddLearningStyle = (style: string) => {
+    // Don't add if already selected
+    if (selectedLearningStyles.includes(style)) {
+      return
+    }
+    // Don't add if max reached
+    if (selectedLearningStyles.length >= MAX_LEARNING_STYLES) {
+      toast({
+        title: "Maximum reached",
+        description: `You can select up to ${MAX_LEARNING_STYLES} learning styles.`,
+        variant: "destructive",
+      })
+      return
+    }
+    setSelectedLearningStyles([...selectedLearningStyles, style])
+  }
+
+  const handleRemoveLearningStyle = (style: string) => {
+    setSelectedLearningStyles(selectedLearningStyles.filter(s => s !== style))
+  }
+
+  // Get available learning styles (exclude already selected ones)
+  const getAvailableLearningStyles = () => {
+    return AVAILABLE_LEARNING_STYLES.filter(
+      style => !selectedLearningStyles.includes(style.value)
+    )
+  }
+
   // Update the handleSubmit function to better handle errors
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file || !instructions) return
+    if (!file) return
 
     // Prevent accidental double submissions
     if (isLoading) return
@@ -177,9 +211,14 @@ export function PdfUploadForm({ hideHeading = false }: PdfUploadFormProps) {
 
     const formData = new FormData()
     formData.append("pdf", file)
-    formData.append("instructions", instructions)
+    formData.append("instructions", instructions || "")
     formData.append("taskType", taskType)
-    formData.append("neurodivergenceType", neurodivergenceType)
+    // Send learning styles as JSON array
+    formData.append("learningStyles", JSON.stringify(selectedLearningStyles))
+    // Add flashcard count if task type is flashcard
+    if (taskType === "flashcard") {
+      formData.append("flashcardCount", flashcardCount)
+    }
 
     try {
       setProcessingStep("Processing with OCR")
@@ -235,67 +274,180 @@ export function PdfUploadForm({ hideHeading = false }: PdfUploadFormProps) {
         setProgress(90)
 
         if (!data.markdown) {
-          throw new Error("Server response did not contain markdown content. Please try again.")
+          throw new Error("Server response did not contain content. Please try again.")
         }
 
-        setMarkdownContent(data.markdown)
+        // For flashcards, handle JSON response and save to database
+        if (taskType === "flashcard") {
+          try {
+            // Parse the JSON flashcards from the markdown response
+            let jsonString = data.markdown.trim()
+            
+            // Remove markdown code blocks if present
+            if (jsonString.startsWith("```")) {
+              jsonString = jsonString.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "")
+            }
+            
+            // Clean up common JSON issues
+            // Remove any leading/trailing whitespace
+            jsonString = jsonString.trim()
+            
+            // Try to find JSON array in the string if it's embedded in text
+            const jsonMatch = jsonString.match(/\[[\s\S]*\]/)
+            if (jsonMatch) {
+              jsonString = jsonMatch[0]
+            }
+            
+            // Function to properly escape JSON strings
+            const fixJsonString = (str: string): string => {
+              // First, try to parse as-is
+              try {
+                JSON.parse(str)
+                return str
+              } catch {
+                // If that fails, we need to fix escape sequences
+                // Use a more robust approach: parse character by character
+                let result = ''
+                let inString = false
+                let escapeNext = false
+                
+                for (let i = 0; i < str.length; i++) {
+                  const char = str[i]
+                  
+                  if (escapeNext) {
+                    result += char
+                    escapeNext = false
+                    continue
+                  }
+                  
+                  if (char === '\\') {
+                    result += char
+                    escapeNext = true
+                    continue
+                  }
+                  
+                  if (char === '"') {
+                    inString = !inString
+                    result += char
+                    continue
+                  }
+                  
+                  if (inString) {
+                    // Inside a string, escape control characters
+                    if (char === '\n') result += '\\n'
+                    else if (char === '\r') result += '\\r'
+                    else if (char === '\t') result += '\\t'
+                    else if (char === '\f') result += '\\f'
+                    else if (char === '\b') result += '\\b'
+                    else result += char
+                  } else {
+                    result += char
+                  }
+                }
+                
+                return result
+              }
+            }
+            
+            // Try to parse with better error handling
+            let parsedFlashcards
+            try {
+              parsedFlashcards = JSON.parse(jsonString)
+            } catch (parseError) {
+              // If parsing fails, try to fix common issues
+              console.error("Initial JSON parse failed, attempting to fix...", parseError)
+              
+              try {
+                // Try fixing the JSON string
+                const fixedJson = fixJsonString(jsonString)
+                parsedFlashcards = JSON.parse(fixedJson)
+              } catch (secondError) {
+                // Last resort: manually fix unescaped characters in string values
+                console.error("Second parse attempt failed, trying manual fix...", secondError)
+                
+                // Extract array and manually fix string values
+                const arrayStart = jsonString.indexOf('[')
+                const arrayEnd = jsonString.lastIndexOf(']')
+                if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+                  let extractedJson = jsonString.substring(arrayStart, arrayEnd + 1)
+                  
+                  // Use the same character-by-character fix
+                  extractedJson = fixJsonString(extractedJson)
+                  
+                  try {
+                    parsedFlashcards = JSON.parse(extractedJson)
+                  } catch (thirdError) {
+                    // Final attempt: log the problematic JSON for debugging
+                    console.error("Final parse attempt failed. Problematic JSON:", extractedJson.substring(0, 500))
+                    throw new Error(`Failed to parse JSON after multiple attempts: ${thirdError instanceof Error ? thirdError.message : String(thirdError)}. The AI may have generated invalid JSON. Please try again.`)
+                  }
+                } else {
+                  throw new Error(`Failed to parse JSON: ${secondError instanceof Error ? secondError.message : String(secondError)}. The AI response may not be valid JSON.`)
+                }
+              }
+            }
+            
+            if (!Array.isArray(parsedFlashcards)) {
+              throw new Error("Flashcards data is not in the expected format (array)")
+            }
+
+            // Save flashcards to database
+            const saveResponse = await fetch("/api/flashcards/save", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                title: file?.name.replace(".pdf", "") || "Flashcard Set",
+                original_filename: file?.name || null,
+                flashcards: parsedFlashcards,
+                flashcard_count: parseInt(flashcardCount),
+                instructions_used: instructions || null,
+                learning_styles: selectedLearningStyles,
+              }),
+            })
+
+            if (saveResponse.ok) {
+              toast({
+                title: "Flashcards created!",
+                description: `Successfully created ${parsedFlashcards.length} flashcards.`,
+              })
+              // Redirect to flashcards page
+              window.location.href = "/dashboard/flashcards"
+              return
+            } else {
+              const errorData = await saveResponse.json()
+              throw new Error(errorData.error || "Failed to save flashcards")
+            }
+          } catch (parseError) {
+            console.error("Failed to parse or save flashcards:", parseError)
+            throw new Error(
+              parseError instanceof Error 
+                ? parseError.message 
+                : "Failed to process flashcards. The AI may not have returned valid JSON format."
+            )
+          }
+        } else {
+          // For summarize/explain, use markdown content
+          setMarkdownContent(data.markdown)
+        }
+
         setProcessingStep(null)
         setProgress(100)
-        // Refresh usage limit after successful processing
+        // Refresh usage count after successful processing
         if (user) {
-          fetchUsageLimit()
+          fetchUsageCount()
         }
-        
-        toast({
-          title: "PDF Processed Successfully",
-          description: `Your ${taskType === "summarize" ? "summary" : "explanation"} has been generated successfully!`,
-        })
       } else {
         const errorMessage = data.error || `Error (${response.status}): ${response.statusText}`
         const errorDetails = data.details ? `\n\nDetails: ${data.details}` : ""
-        
-        // Handle specific error cases
-        if (response.status === 401) {
-          const errorMsg = "Please sign in to process PDFs. " + errorMessage
-          setError(errorMsg)
-          toast({
-            title: "Authentication Required",
-            description: "Please sign in to process PDFs.",
-            variant: "destructive",
-          })
-        } else if (response.status === 429) {
-          const errorMsg = data.message || errorMessage
-          setError(errorMsg)
-          if (data.remaining !== undefined) {
-            setUsageRemaining(data.remaining)
-          }
-          toast({
-            title: "Daily Limit Reached",
-            description: errorMsg,
-            variant: "destructive",
-          })
-        } else {
-          const errorMsg = errorMessage + errorDetails
-          setError(errorMsg)
-          toast({
-            title: "Processing Failed",
-            description: errorMessage,
-            variant: "destructive",
-          })
-        }
-        
+        setError(errorMessage + errorDetails)
         setProcessingStep(null)
         setProgress(0)
       }
     } catch (error) {
       console.error("Error:", error)
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred. Please try again."
-      setError(errorMessage)
-      toast({
-        title: "Processing Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      setError(error instanceof Error ? error.message : "An unexpected error occurred. Please try again.")
       setProcessingStep(null)
       setProgress(0)
     } finally {
@@ -334,129 +486,87 @@ export function PdfUploadForm({ hideHeading = false }: PdfUploadFormProps) {
     document.body.removeChild(element)
   }
 
+  const hasMathContent = markdownContent.includes("$") || markdownContent.includes("\\")
+
   const handleSaveResponse = async () => {
-    if (!user) {
+    if (!markdownContent || !user) {
       toast({
-        title: "Sign in required",
-        description: "Please sign in to save resources.",
+        title: "Error",
+        description: "No content to save or user not logged in.",
         variant: "destructive",
       })
       return
     }
 
-    if (!markdownContent || !file) return
-
-    setSaving(true)
+    setIsSaving(true)
     try {
+      // Generate a title from the file name or use a default
+      const title = file 
+        ? `${file.name.replace(".pdf", "")} - ${taskType === "summarize" ? "Summary" : "Explanation"}`
+        : `${taskType === "summarize" ? "Summary" : "Explanation"} - ${new Date().toLocaleDateString()}`
+
       const response = await fetch("/api/responses/save", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          title: file.name.replace(".pdf", "") + (taskType === "summarize" ? " - Summary" : " - Explanation"),
+          title,
           markdown_content: markdownContent,
           task_type: taskType,
-          original_filename: file.name,
-          instructions_used: instructions,
-          neurodivergence_type_used: neurodivergenceType,
+          original_filename: file?.name || null,
+          instructions_used: instructions || null,
+          neurodivergence_type_used: selectedLearningStyles.length > 0 ? selectedLearningStyles.join(",") : null,
           metadata: {
-            file_size: file.size,
-            processing_date: new Date().toISOString(),
+            learning_styles: selectedLearningStyles,
           },
         }),
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to save resource")
+      if (response.ok) {
+        toast({
+          title: "Response saved",
+          description: "Your response has been saved successfully.",
+        })
+      } else {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to save response")
       }
-
-      toast({
-        title: "Resource Saved Successfully",
-        description: "Your resource has been saved to your dashboard. You can view it in your saved resources.",
-      })
     } catch (error) {
-      console.error("Error saving resource:", error)
+      console.error("Error saving response:", error)
       toast({
-        title: "Failed to Save Resource",
-        description: error instanceof Error ? error.message : "Failed to save resource. Please try again.",
+        title: "Failed to save",
+        description: error instanceof Error ? error.message : "Could not save response. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setSaving(false)
+      setIsSaving(false)
     }
   }
 
-  const hasMathContent = markdownContent.includes("$") || markdownContent.includes("\\")
-
   return (
-    <div className="space-y-10">
-      {!hideHeading && (
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-black text-black mb-4">Upload & Process</h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Transform your PDF into an AI-powered learning resource
-          </p>
-        </div>
-      )}
-      {!authLoading && !user && (
-        <div className="mt-4">
-          <Alert className="max-w-2xl mx-auto border-2 border-purple-200 bg-purple-50">
-            <LogIn className="h-5 w-5 text-purple-600" />
-            <AlertTitle className="font-bold text-black">Sign in required</AlertTitle>
-            <AlertDescription className="text-gray-700">
-              Please{" "}
-              <Link href="/auth/sign-in" className="text-purple-600 hover:text-purple-700 font-semibold underline">
-                sign in
-              </Link>{" "}
-              to process PDFs and save your resources.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-      {user && usageRemaining !== null && (
-        <div className="mt-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full">
-            <span className="text-sm font-semibold text-purple-700">
-              {usageRemaining} summaries remaining today
-            </span>
-          </div>
-        </div>
-      )}
-
-      <Card className="p-10 bg-white border-2 border-purple-100 shadow-2xl rounded-3xl hover:shadow-purple-500/10 transition-all duration-300">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="space-y-4">
-            <Label htmlFor="pdf" className="text-black font-black text-xl flex items-center gap-2">
-              <FileText className="w-5 h-5 text-purple-600" />
-              Upload PDF Document
-            </Label>
+    <div className="space-y-8">
+      <Card className="p-6 bg-white/90 backdrop-blur-sm border-violet-200 shadow-lg">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="pdf" className="text-gray-700 font-semibold">Upload PDF Document</Label>
             <div
-              className="border-2 border-dashed border-purple-300 rounded-2xl p-16 text-center bg-gradient-to-br from-purple-50/50 to-purple-50/30 hover:border-purple-500 hover:bg-gradient-to-br hover:from-purple-50 hover:to-purple-100 transition-all duration-300 cursor-pointer group"
+              className="border-2 border-dashed border-violet-300 rounded-xl p-8 text-center bg-gradient-to-br from-violet-50 to-purple-50 hover:border-violet-400 transition-colors"
               onDrop={handleDrop}
               onDragOver={handleDragOver}
             >
               {file ? (
-                <div className="flex flex-col items-center justify-center space-y-4">
-                  <div className="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center">
-                    <FileText className="h-10 w-10 text-purple-600" />
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-black mb-1">{file.name}</div>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setFile(null)} className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 font-semibold">
-                      Change File
-                    </Button>
-                  </div>
+                <div className="flex items-center justify-center space-x-3">
+                  <FileText className="h-6 w-6 text-violet-600" />
+                  <span className="text-sm font-medium text-gray-700">{file.name}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setFile(null)} className="text-violet-600 hover:text-violet-700">
+                    Change
+                  </Button>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <div className="w-20 h-20 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                    <Upload className="h-10 w-10 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-xl text-black font-black mb-2">Drag and drop your PDF here</div>
-                    <div className="text-sm text-gray-500 mb-4">or click the button below</div>
-                  </div>
+                <div className="space-y-3">
+                  <Upload className="h-10 w-10 text-violet-400 mx-auto" />
+                  <div className="text-sm text-gray-600 font-medium">Drag and drop your PDF here, or click to browse</div>
                   <Input
                     id="pdf"
                     type="file"
@@ -470,222 +580,282 @@ export function PdfUploadForm({ hideHeading = false }: PdfUploadFormProps) {
                     type="button" 
                     variant="outline" 
                     onClick={() => document.getElementById("pdf")?.click()}
-                    className="bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white font-bold px-8 py-6 text-base shadow-md hover:shadow-lg transition-all"
+                    className="bg-white border-violet-300 text-violet-600 hover:bg-violet-50 hover:border-violet-400"
                   >
-                    Browse Files
+                    Select PDF
                   </Button>
                 </div>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-3 text-center">Maximum file size: 10MB. Only PDF files are accepted.</p>
+            <p className="text-xs text-gray-500 mt-1">Maximum file size: 10MB. Only PDF files are accepted.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <Label className="text-black font-black text-lg">Task Type</Label>
-              <RadioGroup value={taskType} onValueChange={setTaskType} className="flex space-x-6">
-                <div className="flex items-center space-x-3">
-                  <RadioGroupItem value="summarize" id="summarize" className="border-2 border-purple-600 data-[state=checked]:bg-purple-600 w-5 h-5" />
-                  <Label htmlFor="summarize" className="text-black font-semibold cursor-pointer text-base">Summarize</Label>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Task Type</Label>
+              <RadioGroup value={taskType} onValueChange={setTaskType} className="flex flex-wrap gap-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="summarize" id="summarize" />
+                  <Label htmlFor="summarize">Summarize</Label>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <RadioGroupItem value="explain" id="explain" className="border-2 border-purple-600 data-[state=checked]:bg-purple-600 w-5 h-5" />
-                  <Label htmlFor="explain" className="text-black font-semibold cursor-pointer text-base">Explain</Label>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="explain" id="explain" />
+                  <Label htmlFor="explain">Explain</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="flashcard" id="flashcard" />
+                  <Label htmlFor="flashcard">Flashcard</Label>
                 </div>
               </RadioGroup>
             </div>
 
-            <div className="space-y-4">
-              <Label htmlFor="neurodivergence" className="text-black font-black text-lg">Learning Style (Optional)</Label>
-              <p className="text-xs text-gray-600 mb-2">
-                Optimize content for your neurodivergence type
+            {taskType === "flashcard" && (
+              <div className="space-y-2">
+                <Label htmlFor="flashcard-count">Number of Flashcards</Label>
+                <Select value={flashcardCount} onValueChange={setFlashcardCount}>
+                  <SelectTrigger id="flashcard-count" className="w-full border-violet-200 focus:border-violet-600">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 21 }, (_, i) => i + 20).map((num) => (
+                      <SelectItem key={num} value={num.toString()}>
+                        {num} flashcards
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">Select how many flashcards to generate (20-40)</p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="learning-styles">Learning Style (Optional)</Label>
+              <p className="text-xs text-gray-500 mb-2">
+                Optimize content for your learning preferences. You can select up to {MAX_LEARNING_STYLES} styles.
               </p>
-              <Select value={neurodivergenceType} onValueChange={setNeurodivergenceType}>
-                <SelectTrigger id="neurodivergence" className="w-full border-2 border-purple-200 focus:border-purple-600 h-12">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None (Standard)</SelectItem>
-                  <SelectItem value="adhd">ADHD</SelectItem>
-                  <SelectItem value="dyslexia">Dyslexia</SelectItem>
-                  <SelectItem value="autism">Autism</SelectItem>
-                  <SelectItem value="audhd">AUDHD (Autism + ADHD)</SelectItem>
-                </SelectContent>
-              </Select>
+              
+              {/* Selected learning styles */}
+              {selectedLearningStyles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedLearningStyles.map((style) => {
+                    const styleLabel = AVAILABLE_LEARNING_STYLES.find(s => s.value === style)?.label || style
+                    return (
+                      <Badge
+                        key={style}
+                        variant="secondary"
+                        className="px-3 py-1.5 bg-violet-100 text-violet-700 border-2 border-violet-200 hover:bg-violet-200"
+                      >
+                        {styleLabel}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLearningStyle(style)}
+                          className="ml-2 hover:text-violet-900"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Add learning style dropdown */}
+              {selectedLearningStyles.length < MAX_LEARNING_STYLES && (
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    if (value) {
+                      handleAddLearningStyle(value)
+                    }
+                  }}
+                >
+                  <SelectTrigger id="learning-styles" className="w-full border-violet-200 focus:border-violet-600">
+                    <SelectValue placeholder="Add learning style..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableLearningStyles().map((style) => (
+                      <SelectItem key={style.value} value={style.value}>
+                        {style.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              {selectedLearningStyles.length === 0 && (
+                <p className="text-xs text-gray-500 italic">No learning styles selected. Content will use standard formatting.</p>
+              )}
             </div>
           </div>
 
-          <div className="space-y-4">
-            <Label htmlFor="instructions" className="text-black font-black text-lg">Instructions for AI</Label>
+          <div className="space-y-2">
+            <Label htmlFor="instructions">Instructions for AI (Optional)</Label>
+            <p className="text-xs text-gray-500 mb-2">
+              Add custom instructions or select from premade prompts below
+            </p>
+            
+            {/* Premade prompts */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {PREMADE_PROMPTS.map((prompt) => (
+                <Button
+                  key={prompt.label}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePremadePrompt(prompt.value)}
+                  className="border-2 border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-400 text-xs"
+                >
+                  {prompt.label}
+                </Button>
+              ))}
+            </div>
+            
             <Textarea
               id="instructions"
-              placeholder="E.g., Summarize the key points of this document, or Explain the concepts in simple terms..."
+              placeholder="E.g., Summarize the key points of this document, or Explain the concepts in simple terms... (Optional - you can use premade prompts above or leave empty)"
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              rows={5}
-              required
-              className="border-2 border-purple-200 focus:border-purple-600 resize-none text-base"
+              rows={4}
             />
           </div>
 
-          <Button 
-            type="submit" 
-            disabled={isLoading || !file || !instructions || !user || (usageRemaining !== null && usageRemaining === 0)} 
-            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black py-7 text-lg shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Bot className="mr-2 h-5 w-5" />
-                Process with AI Agent
-              </>
+          <div className="space-y-3">
+            {usageCount !== null && (
+              <div className="flex items-center justify-between p-3 bg-violet-50 rounded-lg border border-violet-200">
+                <span className="text-sm font-medium text-violet-700">Uploads remaining today:</span>
+                <span className="text-sm font-bold text-violet-600">{usageCount.remaining} / 3</span>
+              </div>
             )}
-          </Button>
+            <Button 
+              type="submit" 
+              disabled={isLoading || !file || !user || (usageCount !== null && usageCount.remaining <= 0)} 
+              className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold py-6 text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Bot className="mr-2 h-4 w-4" />
+                  Process with AI Agent
+                </>
+              )}
+            </Button>
+          </div>
         </form>
 
         {processingStep && (
-          <div className="mt-8 space-y-3 p-6 bg-gradient-to-r from-purple-50 to-purple-100 rounded-2xl border-2 border-purple-200 shadow-lg">
+          <div className="mt-6 space-y-2 p-4 bg-violet-50 rounded-lg border border-violet-200">
             <div className="flex items-center justify-between">
-              <span className="text-base font-bold text-purple-700">{processingStep}</span>
-              <span className="text-base text-purple-600 font-black">{progress}%</span>
+              <span className="text-sm font-medium text-violet-700">{processingStep}</span>
+              <span className="text-sm text-violet-600 font-semibold">{progress}%</span>
             </div>
-            <Progress value={progress} className="h-3 bg-purple-200" />
+            <Progress value={progress} className="h-3 bg-violet-100" />
           </div>
         )}
 
         {error && (
-          <Alert variant="destructive" className="mt-6 border-2 border-red-500 rounded-xl p-6">
-            <AlertCircle className="h-5 w-5" />
-            <AlertTitle className="font-black text-lg">Error</AlertTitle>
-            <AlertDescription className="whitespace-pre-line mt-2">{error}</AlertDescription>
+          <Alert variant="destructive" className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription className="whitespace-pre-line">{error}</AlertDescription>
           </Alert>
         )}
       </Card>
 
       {markdownContent && (
-        <div className="space-y-8 mt-12">
-            <Card className="p-10 bg-white border-2 border-purple-100 shadow-2xl rounded-3xl">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
-                  <CheckCircle className="h-7 w-7 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-3xl font-black text-black">AI Agent Response</h2>
-                  <p className="text-sm text-gray-500 mt-1">Your document has been processed successfully</p>
-                </div>
+        <div className="space-y-6">
+          <Card className="p-6 bg-white/90 backdrop-blur-sm border-violet-200 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-violet-600" />
+                <h2 className="text-xl font-semibold text-gray-800">AI Agent Response</h2>
               </div>
-              {user && (
-                <Button
-                  onClick={handleSaveResponse}
-                  disabled={saving}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Resource
-                    </>
-                  )}
-                </Button>
-              )}
+              <Button
+                onClick={handleSaveResponse}
+                disabled={isSaving || !user}
+                className="bg-violet-600 hover:bg-violet-700 text-white"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Response
+                  </>
+                )}
+              </Button>
             </div>
 
             {hasMathContent && (
-              <Alert className="mb-8 border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 rounded-2xl p-6">
-                <Info className="h-6 w-6 text-purple-600" />
-                <AlertTitle className="font-black text-lg text-black">Mathematical Content Detected</AlertTitle>
-                <AlertDescription className="text-gray-700 mt-2 text-base">
+              <Alert className="mb-4">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Mathematical Content Detected</AlertTitle>
+                <AlertDescription>
                   This document contains mathematical expressions. The enhanced PDF export will properly render these
                   expressions with correct positioning of division symbols and other mathematical notation.
                 </AlertDescription>
               </Alert>
             )}
 
-            <Tabs defaultValue="preview" className="mb-8">
-              <TabsList className="grid w-full grid-cols-2 bg-purple-100 rounded-xl p-1.5 h-14">
-                <TabsTrigger value="preview" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white font-bold text-base rounded-lg">Preview</TabsTrigger>
-                <TabsTrigger value="export" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white font-bold text-base rounded-lg">Export</TabsTrigger>
+            <Tabs defaultValue="preview" className="mb-6">
+              <TabsList className="grid w-full grid-cols-2 bg-violet-100">
+                <TabsTrigger value="preview" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white">Preview</TabsTrigger>
+                <TabsTrigger value="export" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white">Export</TabsTrigger>
               </TabsList>
               <TabsContent value="preview" className="mt-4">
                 <div className="prose max-w-none dark:prose-invert">
                   <MarkdownPreview markdown={markdownContent} />
                 </div>
               </TabsContent>
-              <TabsContent value="export" className="mt-6">
-                <div className="grid gap-6">
-                  <div className="flex flex-col space-y-2 mb-4">
-                    <h3 className="text-2xl font-black text-black">Download Options</h3>
-                    <p className="text-base text-gray-600">
+              <TabsContent value="export" className="mt-4">
+                <div className="grid gap-4">
+                  <div className="flex flex-col space-y-2">
+                    <h3 className="text-lg font-medium">Download Options</h3>
+                    <p className="text-sm text-muted-foreground">
                       Download your results in different formats for sharing or reference.
                     </p>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <Card className="p-6 border-2 border-purple-100 bg-white hover:border-purple-300 transition-all duration-300 rounded-2xl">
-                      <div className="flex flex-col space-y-3 mb-5">
-                        <h4 className="font-black text-black text-xl">Markdown Format</h4>
-                        <p className="text-sm text-gray-600 leading-relaxed">
+                  <div className="grid grid-cols-1 gap-4">
+                    <Card className="p-4">
+                      <div className="flex flex-col space-y-2 mb-4">
+                        <h4 className="font-medium">Markdown Format</h4>
+                        <p className="text-sm text-muted-foreground">
                           Download the raw markdown text that can be used in markdown editors.
                         </p>
                       </div>
-                      <Button onClick={downloadMarkdown} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-6 rounded-xl shadow-lg">
-                        <Download className="mr-2 h-5 w-5" />
+                      <Button onClick={downloadMarkdown} className="w-full bg-violet-600 hover:bg-violet-700 text-white">
+                        <Download className="mr-2 h-4 w-4" />
                         Download Markdown
                       </Button>
                     </Card>
 
-                    <Card className="p-6 border-2 border-purple-100 bg-white hover:border-purple-300 transition-all duration-300 rounded-2xl">
-                      <div className="flex flex-col space-y-3 mb-5">
-                        <h4 className="font-black text-black text-xl">Standard PDF</h4>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          Download a PDF with properly rendered equations, optimized for general accessibility.
+                    <Card className="p-4">
+                      <div className="flex flex-col space-y-2 mb-4">
+                        <h4 className="font-medium">Enhanced PDF Format</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Download a single-page PDF with properly rendered equations and Study Better branding.
                         </p>
                       </div>
                       <EnhancedPdfGenerator
                         markdown={markdownContent}
                         fileName={file?.name || "document.pdf"}
                         taskType={taskType}
-                        neurodivergentFriendly={false}
                       />
                     </Card>
 
-                    <Card className="md:col-span-2 p-6 border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-purple-100 hover:border-purple-500 transition-all duration-300 rounded-2xl">
-                      <div className="flex flex-col space-y-3 mb-5">
-                        <div className="flex items-center gap-3">
-                          <h4 className="font-black text-black text-xl">Neurodivergent-Friendly PDF</h4>
-                          <span className="px-3 py-1 bg-purple-600 text-white text-xs font-black rounded-full">Accessible</span>
-                        </div>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          Optimized for ADHD, dyslexia, autism, and AUDHD with larger fonts, increased spacing, high contrast, and clearer typography.
-                        </p>
-                        <ul className="text-xs text-gray-600 list-disc list-inside mt-2 space-y-1">
-                          <li>Larger, sans-serif fonts</li>
-                          <li>Increased line & letter spacing</li>
-                          <li>High contrast black text</li>
-                          <li>Shorter line lengths (65 characters)</li>
-                          <li>More whitespace between sections</li>
-                        </ul>
-                      </div>
-                      <EnhancedPdfGenerator
-                        markdown={markdownContent}
-                        fileName={file?.name || "document.pdf"}
-                        taskType={taskType}
-                        neurodivergentFriendly={true}
-                      />
-                    </Card>
+
+                 
+           
                   </div>
-                  <div className="mt-4">
-                    <Button variant="outline" onClick={copyToClipboard} className="w-full border-2 border-purple-300 text-purple-600 hover:bg-purple-50 hover:border-purple-600 font-bold py-6 rounded-xl">
-                      <Copy className="mr-2 h-5 w-5" />
+                  <div className="mt-2">
+                    <Button variant="outline" onClick={copyToClipboard} className="w-full border-violet-300 text-violet-600 hover:bg-violet-50 hover:border-violet-400">
+                      <Copy className="mr-2 h-4 w-4" />
                       Copy to Clipboard
                     </Button>
                   </div>

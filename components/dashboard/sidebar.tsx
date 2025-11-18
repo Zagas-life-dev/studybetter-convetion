@@ -13,7 +13,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: FileText },
   { href: "/dashboard/new", label: "Create New", icon: Plus },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare, comingSoon: true },
-  { href: "/dashboard/flashcards", label: "Flashcards", icon: BookOpen, comingSoon: true },
+  { href: "/dashboard/flashcards", label: "Flashcards", icon: BookOpen },
   { href: "/dashboard/quizlet", label: "Quizlet", icon: HelpCircle, comingSoon: true },
 ]
 

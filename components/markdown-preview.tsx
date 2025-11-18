@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
+import rehypeRaw from "rehype-raw"
 import { useEffect } from "react"
 
 interface MarkdownPreviewProps {
@@ -201,7 +202,7 @@ export function MarkdownPreview({ markdown }: MarkdownPreviewProps) {
     <div className="prose max-w-none dark:prose-invert markdown-content" style={{ color: "rgb(0,0,0)" }}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[rehypeRaw, rehypeKatex]}
         components={{
             // Paragraphs
             p: ({ node, ...props }) => (
@@ -283,10 +284,48 @@ export function MarkdownPreview({ markdown }: MarkdownPreviewProps) {
               <em style={{ color: "rgb(0,0,0)", fontStyle: "italic" }} {...props} />
             ),
           
-            // Links
-            a: ({ node, ...props }) => (
-              <a style={{ color: "#0070f3", textDecoration: "none" }} {...props} />
-            ),
+            // Links - with special handling for PDFs
+            a: ({ node, href, children, ...props }: { node?: any; href?: string; children?: any; [key: string]: any }) => {
+              const isPdfLink = href?.toLowerCase().endsWith('.pdf') || href?.toLowerCase().includes('.pdf')
+              
+              if (isPdfLink) {
+                return (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: "#0070f3",
+                      textDecoration: "none",
+                      fontWeight: 500,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.25rem",
+                    }}
+                    onClick={(e) => {
+                      // Allow default link behavior (opens in new tab)
+                      // But also allow embedding if user wants
+                    }}
+                    {...props}
+                  >
+                    {children}
+                    <span style={{ fontSize: "0.85em", marginLeft: "0.25rem" }}>📄</span>
+                  </a>
+                )
+              }
+              
+              return (
+                <a
+                  href={href}
+                  style={{ color: "#0070f3", textDecoration: "none" }}
+                  target={href?.startsWith('http') ? "_blank" : undefined}
+                  rel={href?.startsWith('http') ? "noopener noreferrer" : undefined}
+                  {...props}
+                >
+                  {children}
+                </a>
+              )
+            },
           
             // Inline and block code
             code: ({ node, inline, ...props }: { node?: any; inline?: boolean; [key: string]: any }) =>
@@ -334,6 +373,7 @@ export function MarkdownPreview({ markdown }: MarkdownPreviewProps) {
             ),
           
             // Images - supports URLs, data URLs, and base64
+            // Also handles PDF files that were incorrectly inserted as images
             img: ({ node, src, alt, ...props }: { node?: any; src?: string; alt?: string; [key: string]: any }) => {
               // Handle various image URL formats
               const imageSrc = src?.trim() || null
@@ -355,6 +395,77 @@ export function MarkdownPreview({ markdown }: MarkdownPreviewProps) {
                   >
                     {alt || "Image not available"}
                   </span>
+                )
+              }
+
+              // Check if this is a PDF file - convert to link/embed instead of image
+              const isPdf = imageSrc.toLowerCase().endsWith('.pdf') || imageSrc.toLowerCase().includes('.pdf')
+              
+              if (isPdf) {
+                // Render PDF as an embedded viewer with link option
+                return (
+                  <div style={{ 
+                    margin: "1.5rem auto", 
+                    maxWidth: "100%",
+                    border: "2px solid #eaeaea",
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    backgroundColor: "#ffffff"
+                  }}>
+                    <div style={{
+                      padding: "0.75rem 1rem",
+                      backgroundColor: "#f5f5f5",
+                      borderBottom: "1px solid #eaeaea",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    }}>
+                      <span style={{ fontSize: "0.9rem", fontWeight: 500, color: "rgb(0,0,0)" }}>
+                        📄 {alt || "PDF Document"}
+                      </span>
+                      <a
+                        href={imageSrc}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: "0.85rem",
+                          color: "#0070f3",
+                          textDecoration: "none",
+                          fontWeight: 500
+                        }}
+                      >
+                        Open in new tab →
+                      </a>
+                    </div>
+                    <iframe
+                      src={imageSrc}
+                      style={{
+                        width: "100%",
+                        height: "600px",
+                        border: "none",
+                        display: "block"
+                      }}
+                      title={alt || "PDF Document"}
+                      onError={(e) => {
+                        console.error("Failed to load PDF:", imageSrc)
+                        // Fallback to link if iframe fails
+                        const target = e.target as HTMLIFrameElement
+                        target.style.display = "none"
+                        const parent = target.parentElement
+                        if (parent) {
+                          parent.innerHTML = `
+                            <div style="padding: 2rem; text-align: center;">
+                              <p style="margin-bottom: 1rem; color: rgb(0,0,0);">PDF could not be embedded. Please open the link below.</p>
+                              <a href="${imageSrc}" target="_blank" rel="noopener noreferrer" style="color: #0070f3; text-decoration: none; font-weight: 500;">
+                                Open PDF: ${alt || imageSrc}
+                              </a>
+                            </div>
+                          `
+                        }
+                      }}
+                    />
+                  </div>
                 )
               }
 
@@ -426,7 +537,98 @@ export function MarkdownPreview({ markdown }: MarkdownPreviewProps) {
                   />
                 );
               }
+              // Support YouTube video embeds (divs with iframes)
+              if (props.children && typeof props.children === 'object' && 'props' in props.children) {
+                const children = props.children.props?.children
+                if (Array.isArray(children)) {
+                  const hasIframe = children.some((child: any) => 
+                    child?.props?.src?.includes('youtube.com/embed')
+                  )
+                  if (hasIframe) {
+                    // This is a YouTube embed, render as-is
+                    return <div {...props} />;
+                  }
+                }
+              }
               return <div className={className} {...props} />;
+            },
+            
+            // Support iframe for YouTube embeds and PDF embeds
+            iframe: ({ node, src, ...props }: { node?: any; src?: string; [key: string]: any }) => {
+              if (src?.includes('youtube.com/embed')) {
+                return (
+                  <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%", margin: "1.5rem auto", borderRadius: "8px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+                    <iframe
+                      src={src}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        border: "none",
+                      }}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      {...props}
+                    />
+                  </div>
+                );
+              }
+              
+              // Handle PDF embeds
+              if (src?.toLowerCase().endsWith('.pdf') || src?.toLowerCase().includes('.pdf')) {
+                return (
+                  <div style={{ 
+                    margin: "1.5rem auto", 
+                    maxWidth: "100%",
+                    border: "2px solid #eaeaea",
+                    borderRadius: "8px",
+                    overflow: "hidden",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    backgroundColor: "#ffffff"
+                  }}>
+                    <div style={{
+                      padding: "0.75rem 1rem",
+                      backgroundColor: "#f5f5f5",
+                      borderBottom: "1px solid #eaeaea",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    }}>
+                      <span style={{ fontSize: "0.9rem", fontWeight: 500, color: "rgb(0,0,0)" }}>
+                        PDF Viewer
+                      </span>
+                      <a
+                        href={src}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: "0.85rem",
+                          color: "#0070f3",
+                          textDecoration: "none",
+                          fontWeight: 500
+                        }}
+                      >
+                        Open in new tab →
+                      </a>
+                    </div>
+                    <iframe
+                      src={src}
+                      style={{
+                        width: "100%",
+                        height: "600px",
+                        border: "none",
+                        display: "block"
+                      }}
+                      title="PDF Document"
+                      {...props}
+                    />
+                  </div>
+                );
+              }
+              
+              return <iframe src={src} {...props} />;
             }
         }}
       >

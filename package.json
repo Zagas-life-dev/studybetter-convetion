@@ -62,6 +62,7 @@
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
     "rehype-katex": "latest",
+    "rehype-raw": "^7.0.0",
     "remark-gfm": "latest",
     "remark-math": "latest",
     "sonner": "^1.7.1",
