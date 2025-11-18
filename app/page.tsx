@@ -1,7 +1,7 @@
 "use client"
 
 import { PdfUploadForm } from "@/components/pdf-upload-form"
-import { Sparkles, BookOpen, Zap, Brain, ArrowRight, FileText, CheckCircle2, Users, TrendingUp } from "lucide-react"
+import { Sparkles, BookOpen, ArrowRight, FileText, CheckCircle2, Users, TrendingUp, Layers, ClipboardList, MessageSquare, Clock3, Layout } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import Link from "next/link"
@@ -98,17 +98,18 @@ export default function Home() {
             <div className="space-y-8">
               <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-100 rounded-full border border-purple-200">
                 <span className="w-2.5 h-2.5 bg-purple-600 rounded-full animate-pulse"></span>
-                <span className="text-sm font-bold text-purple-700 uppercase tracking-wide">AI-Powered Learning Platform</span>
+                <span className="text-sm font-bold text-purple-700 uppercase tracking-wide">Neurodivergent-Centered Learning</span>
               </div>
               
               <h1 className="text-6xl md:text-7xl lg:text-8xl font-black text-black leading-[1.1]">
-                Transform PDFs into
-                <span className="block text-purple-600 mt-2">Learning Power</span>
+                Personalize Education
+                <span className="block text-purple-600 mt-2">For Every Mind</span>
               </h1>
               
               <p className="text-xl md:text-2xl text-gray-700 leading-relaxed max-w-xl">
-                Get AI-powered summaries, detailed explanations, and perfect mathematical rendering. 
-                Optimized for every learning style.
+                StudyBetterAI blends adaptive design with AI copilots so students—including
+                those with ADHD, dyslexia, or other learning differences—can learn faster,
+                remember better, and stay focused without forcing their brains into a single mold.
               </p>
 
               <div className="flex flex-wrap gap-6 items-center">
@@ -173,6 +174,47 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Vision Section */}
+      <section className="bg-gradient-to-br from-purple-50 via-white to-purple-100 py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-200/60 rounded-full border border-purple-300/60">
+              <span className="text-sm font-bold text-purple-800 uppercase tracking-wide">Our Vision</span>
+            </div>
+            <h3 className="text-4xl font-black text-black leading-tight">
+              Close the neurodivergent gap in education and redefine personalization for all.
+            </h3>
+            <p className="text-lg text-gray-700 leading-relaxed">
+              Traditional systems reward uniformity. StudyBetterAI flips the script so every mind gets the tools, pacing, and sensory environment it needs.
+              Students don&apos;t just study harder—they study smarter, in their own way.
+            </p>
+          </div>
+          <div className="bg-white rounded-3xl shadow-2xl p-8 border border-purple-100 space-y-5">
+            <div className="flex items-start gap-4">
+              <CheckCircle2 className="w-7 h-7 text-purple-600 mt-1" />
+              <div>
+                <p className="font-semibold text-gray-900">Adaptive pacing</p>
+                <p className="text-gray-600">Learning loops that flex with attention spans and cognitive load.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <CheckCircle2 className="w-7 h-7 text-purple-600 mt-1" />
+              <div>
+                <p className="font-semibold text-gray-900">Inclusive design</p>
+                <p className="text-gray-600">Readable typography, calming layouts, and sensory-aware interactions.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <CheckCircle2 className="w-7 h-7 text-purple-600 mt-1" />
+              <div>
+                <p className="font-semibold text-gray-900">Guided mastery</p>
+                <p className="text-gray-600">AI copilots that teach the process, not just the answer.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Main Upload Section */}
       <section id="upload" className="bg-gradient-to-b from-white to-purple-50/30 py-20 scroll-mt-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -180,7 +222,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section - Modern Grid */}
+      {/* Key Capabilities */}
       <section id="features" className="bg-black text-white py-24 md:py-32 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 rounded-full blur-3xl"></div>
@@ -189,9 +231,9 @@ export default function Home() {
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center mb-20">
-            <h2 className="text-5xl md:text-6xl font-black mb-6">Powerful Features</h2>
+            <h2 className="text-5xl md:text-6xl font-black mb-6">Key Capabilities</h2>
             <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-              Everything you need to transform PDFs into comprehensive learning resources
+              A neurodivergent-centered learning ecosystem that adapts to every brain and study style
             </p>
           </div>
 
@@ -200,11 +242,24 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 to-purple-600/0 group-hover:from-purple-600/10 group-hover:to-purple-600/5 rounded-3xl transition-all duration-300"></div>
               <div className="relative">
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <Layers className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-black mb-4">AI Summary & Explanation</h3>
+                <p className="text-gray-300 leading-relaxed text-lg">
+                  Dynamic models tailor smart summaries and deep explanations to each learner&apos;s pace and comprehension level.
+                </p>
+              </div>
+            </div>
+
+            <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 border border-white/10 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 to-purple-600/0 group-hover:from-purple-600/10 group-hover:to-purple-600/5 rounded-3xl transition-all duration-300"></div>
+              <div className="relative">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
                   <BookOpen className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-black mb-4">Smart Summaries</h3>
+                <h3 className="text-2xl font-black mb-4">Flashcards & Adaptive Quizlets</h3>
                 <p className="text-gray-300 leading-relaxed text-lg">
-                  Get concise, comprehensive summaries of complex documents in seconds with AI-powered analysis.
+                  Instantly convert material into interactive flashcards that track mastery, surface weak spots, and optimize review loops.
                 </p>
               </div>
             </div>
@@ -213,11 +268,11 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 to-purple-600/0 group-hover:from-purple-600/10 group-hover:to-purple-600/5 rounded-3xl transition-all duration-300"></div>
               <div className="relative">
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <Brain className="w-8 h-8 text-white" />
+                  <ClipboardList className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-black mb-4">Deep Explanations</h3>
+                <h3 className="text-2xl font-black mb-4">Assignment Handler</h3>
                 <p className="text-gray-300 leading-relaxed text-lg">
-                  Understand complex concepts with detailed, easy-to-follow explanations that break down difficult topics.
+                  Upload assignments and get guided, step-by-step breakdowns so students learn the &ldquo;how&rdquo; behind every solution.
                 </p>
               </div>
             </div>
@@ -226,15 +281,62 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 to-purple-600/0 group-hover:from-purple-600/10 group-hover:to-purple-600/5 rounded-3xl transition-all duration-300"></div>
               <div className="relative">
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <Zap className="w-8 h-8 text-white" />
+                  <MessageSquare className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-black mb-4">Math Support</h3>
+                <h3 className="text-2xl font-black mb-4">Integrated Chat & Study Hub</h3>
                 <p className="text-gray-300 leading-relaxed text-lg">
-                  Perfect LaTeX rendering for mathematical expressions, formulas, and equations with professional formatting.
+                  Chat with AI tutors, review notes, and manage study sessions inside one unified workspace to maintain focus.
+                </p>
+              </div>
+            </div>
+
+            <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 border border-white/10 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 to-purple-600/0 group-hover:from-purple-600/10 group-hover:to-purple-600/5 rounded-3xl transition-all duration-300"></div>
+              <div className="relative">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <Clock3 className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-black mb-4">Primodo Pomodoro Timer</h3>
+                <p className="text-gray-300 leading-relaxed text-lg">
+                  An adaptive Pomodoro system that detects fatigue patterns and adjusts breaks to help ADHD minds stay consistent.
+                </p>
+              </div>
+            </div>
+
+            <div className="group relative bg-white/5 backdrop-blur-sm rounded-3xl p-10 border border-white/10 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/0 to-purple-600/0 group-hover:from-purple-600/10 group-hover:to-purple-600/5 rounded-3xl transition-all duration-300"></div>
+              <div className="relative">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <Layout className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-black mb-4">Dynamic UI Adaptation</h3>
+                <p className="text-gray-300 leading-relaxed text-lg">
+                  Fonts, spacing, and layouts shift based on neurotype to reduce cognitive overload and make content effortless to parse.
                 </p>
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Story Section */}
+      <section className="bg-white py-24 md:py-32">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 text-gray-700">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full">
+            <span className="text-sm font-bold text-purple-700 uppercase tracking-wide">Our Story</span>
+          </div>
+          <h2 className="text-4xl md:text-5xl font-black text-black leading-tight">
+            Built for learners who don&apos;t fit a one-size-fits-all classroom
+          </h2>
+          <p className="text-xl leading-relaxed">
+            StudyBetterAI started as a simple personalized study tool. Within our first year, user interviews and real-world performance made one truth obvious:
+            many struggling students weren&apos;t unmotivated, they were neurodivergent. ADHD, dyslexia, and other learning differences weren&apos;t outliers—they were
+            the pattern. So we rebuilt the platform around those minds first, combining adaptive design with AI guidance.
+          </p>
+          <p className="text-xl leading-relaxed">
+            Today, StudyBetterAI is a neurodivergent-centered learning ecosystem that helps every learner—regardless of focus, comprehension speed, or sensory needs—
+            stay engaged, master assignments, and actually enjoy the process.
+          </p>
         </div>
       </section>
 
