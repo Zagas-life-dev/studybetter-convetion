@@ -5,21 +5,18 @@ import { Sparkles, BookOpen, Zap, Brain, ArrowRight, FileText, CheckCircle2, Use
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import Link from "next/link"
-import { useEffect } from "react"
+import { Suspense, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
-export default function Home() {
-  const { user, loading } = useAuth()
+function AuthRedirectHandler() {
   const router = useRouter()
   const searchParams = useSearchParams()
-
-  // Handle auth errors from query parameters (expired email links, etc.)
+  
   useEffect(() => {
     const error = searchParams.get('error')
     const errorCode = searchParams.get('error_code')
     
     if (error || errorCode) {
-      // Redirect to error page with error details
       const errorUrl = new URL('/auth/error', window.location.origin)
       if (error) errorUrl.searchParams.set('error', error)
       if (errorCode) errorUrl.searchParams.set('error_code', errorCode)
@@ -29,6 +26,12 @@ export default function Home() {
       router.replace(errorUrl.pathname + errorUrl.search)
     }
   }, [searchParams, router])
+
+  return null
+}
+
+export default function Home() {
+  const { user, loading } = useAuth()
 
   return (
     <div className="min-h-screen bg-white">
@@ -333,6 +336,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+      <Suspense fallback={null}>
+        <AuthRedirectHandler />
+      </Suspense>
       </div>
   )
 }

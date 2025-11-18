@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,8 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 
-export default function AuthErrorPage() {
-  const router = useRouter()
+function AuthErrorPageContent() {
   const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [resending, setResending] = useState(false)
@@ -153,6 +152,22 @@ export default function AuthErrorPage() {
         </div>
       </Card>
     </div>
+  )
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50/30">
+          <Card className="p-8 bg-white border-2 border-purple-100 shadow-xl rounded-3xl max-w-md w-full text-center">
+            <p className="text-gray-600">Loading authentication error details...</p>
+          </Card>
+        </div>
+      }
+    >
+      <AuthErrorPageContent />
+    </Suspense>
   )
 }
 
