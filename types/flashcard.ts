@@ -99,3 +99,4 @@ export interface FlashcardAIResponse {
   difficulty: 'easy' | 'medium' | 'hard'
 }
 
+

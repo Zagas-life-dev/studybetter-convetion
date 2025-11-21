@@ -24,7 +24,7 @@ import { X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 // Maximum file size: 10MB
-const MAX_FILE_SIZE = 10 * 1024 * 1024
+const MAX_FILE_SIZE = 20 * 1024 * 1024
 
 // Premade prompts
 const PREMADE_PROMPTS = [

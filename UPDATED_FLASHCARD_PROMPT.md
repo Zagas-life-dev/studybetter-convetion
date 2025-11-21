@@ -274,3 +274,4 @@ Structure your flashcards to maximize the effectiveness of these automatic enhan
 
 **Remember**: Your goal is to create a comprehensive set of flashcards that covers ALL areas of the PDF topic, distributed evenly across all major concepts, with the EXACT number of cards requested. Each flashcard should be clear, focused, and designed to promote active recall and deep understanding. The output must be valid JSON that can be directly parsed and used by the flashcard display system.
 
+
