@@ -414,7 +414,7 @@ Example: [IMAGE: Mathematics Set Theory Venn diagram intersection] vs [IMAGE: Ma
 
   const agentPayload = {
     agent_id: agentId,
-    max_tokens: 3000, // Reduced from 4000 to save tokens
+    max_tokens: 10000, // Reduced from 4000 to save tokens
     messages: [
       {
         role: "system",
